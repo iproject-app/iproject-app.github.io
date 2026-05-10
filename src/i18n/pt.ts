@@ -55,6 +55,10 @@ export const pt: Translations = {
     'Este recibo já estava anexado a outro lançamento — usando o mesmo arquivo.',
   'receipt.replaceHint': 'Solte outro para substituir.',
   'receipt.errorPrefix': 'Não foi possível processar o recibo:',
+  'receipt.viewing': 'Carregando recibo…',
+  'receipt.viewError': 'Não foi possível carregar o recibo.',
+  'receipt.openOriginal': 'Abrir original',
+  'receipt.pdfFallback': 'Abrir o PDF anexado em uma nova aba.',
 
   'billing.outstanding': 'A pagar',
   'billing.linkedToBill': 'Vinculado ao orçamento',

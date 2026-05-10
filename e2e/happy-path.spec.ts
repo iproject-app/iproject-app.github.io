@@ -215,3 +215,55 @@ test('outstanding pill + bill linkage', async ({ page }) => {
   await expect(page.getByRole('table').getByText(/Stone delivery/)).toBeVisible();
   await expect(page.getByRole('table').getByText('300')).toHaveCount(0);
 });
+
+test('detail modal shows attached receipt image', async ({ page }) => {
+  const expenseWithReceipt = {
+    id: 'seed-1',
+    date: '2026-05-04',
+    category: 'Materials',
+    payer: 'Joe',
+    payee: 'Quarry',
+    description: 'Sand',
+    amount: 200,
+    currency: 'BRL',
+    kind: 'expense' as const,
+    receipt: 'sand.jpg',
+  };
+  const projectData: ProjectFixture = {
+    slug: 'back-wall',
+    name: 'Back Wall',
+    currency: 'BRL',
+    customCategories: [],
+    contacts: [],
+    expenses: [expenseWithReceipt],
+  };
+
+  await page.route('**/api/projects', (route: Route) =>
+    route.fulfill({
+      json: { projects: [{ slug: 'back-wall', name: 'Back Wall', expenseCount: 1, total: 200 }] },
+    }),
+  );
+  await page.route('**/api/data*', (route: Route) =>
+    route.fulfill({ json: projectData }),
+  );
+  // Tiny 1x1 PNG (base64) — enough bytes to render in the test browser.
+  const pngBytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+  await page.route('**/receipts/sand.jpg*', (route: Route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+      body: pngBytes,
+    }),
+  );
+
+  await page.goto('/projects/back-wall');
+  await page.locator('tr', { hasText: 'Quarry' }).click();
+  await expect(page.getByRole('heading', { name: /^Details$/i })).toBeVisible();
+
+  const img = page.getByAltText('sand.jpg');
+  await expect(img).toBeVisible();
+  await expect(img).toHaveAttribute('src', /^blob:/);
+});

@@ -55,6 +55,10 @@ export const en: Translations = {
     'This receipt was already attached to another entry — using the same file.',
   'receipt.replaceHint': 'Drop another to replace.',
   'receipt.errorPrefix': "Couldn't process receipt:",
+  'receipt.viewing': 'Loading receipt…',
+  'receipt.viewError': "Couldn't load receipt.",
+  'receipt.openOriginal': 'Open original',
+  'receipt.pdfFallback': 'Open the attached PDF in a new tab.',
 
   'billing.outstanding': 'Outstanding',
   'billing.linkedToBill': 'Linked to bill',
