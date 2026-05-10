@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { NavBar } from './components/NavBar';
 import { Home } from './pages/Home';
+import { ProjectView } from './pages/ProjectView';
 import { NotFound } from './pages/NotFound';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 
@@ -15,6 +16,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:slug"
+            element={
+              <ProtectedRoute>
+                <ProjectView />
               </ProtectedRoute>
             }
           />

@@ -4,7 +4,7 @@ import { withAuthenticationRequired } from '@auth0/auth0-react';
 function Loading() {
   return (
     <div className="flex h-full min-h-[50vh] items-center justify-center px-4">
-      <div className="text-sm text-slate-400">Loading…</div>
+      <div className="text-sm text-slate-500">Loading…</div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ export function NavBar() {
   const { isAuthenticated, user, logout } = useAuth0();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur supports-[backdrop-filter]:bg-slate-950/70">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link to="/" className="flex min-h-11 items-center gap-2">
           <img
@@ -13,8 +13,8 @@ export function NavBar() {
             alt="iproject.app"
             className="h-9 w-9 rounded-lg sm:h-10 sm:w-10"
           />
-          <span className="text-base font-semibold tracking-tight text-white sm:text-lg">
-            iproject<span className="text-brand-400">.app</span>
+          <span className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+            iproject<span className="text-brand-600">.app</span>
           </span>
         </Link>
 
@@ -25,10 +25,10 @@ export function NavBar() {
                 src={user.picture}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="h-9 w-9 rounded-full border border-slate-700"
+                className="h-9 w-9 rounded-full ring-2 ring-white"
               />
             )}
-            <span className="hidden max-w-[14rem] truncate text-sm text-slate-300 sm:inline">
+            <span className="hidden max-w-[14rem] truncate text-sm text-slate-600 sm:inline">
               {user.email}
             </span>
             <button
@@ -36,7 +36,7 @@ export function NavBar() {
               onClick={() =>
                 logout({ logoutParams: { returnTo: window.location.origin } })
               }
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-100 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             >
               Log out
             </button>
