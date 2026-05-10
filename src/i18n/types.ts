@@ -70,6 +70,11 @@ export interface Translations {
   'billing.noLinkedBill': string;
   'billing.noBillsToLink': string;
 
+  'summary.totalSpent': string;
+  'summary.byCategory': string;
+  'summary.byPayer': string;
+  'summary.unknownPayer': string;
+
   'filter.label': string;
   'filter.all': string;
   'filter.payments': string;

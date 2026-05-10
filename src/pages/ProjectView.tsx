@@ -13,6 +13,7 @@ import {
   type ExpenseFilter,
 } from '../components/FilterChips';
 import { OutstandingPill } from '../components/OutstandingPill';
+import { SummaryTiles } from '../components/SummaryTiles';
 import type { Expense } from '../lib/types';
 
 export function ProjectView() {
@@ -56,6 +57,12 @@ export function ProjectView() {
           </p>
         )}
       </header>
+
+      {!loading && !error && data && data.expenses.length > 0 && (
+        <section className="mt-6">
+          <SummaryTiles expenses={data.expenses} />
+        </section>
+      )}
 
       {!loading && !error && data && (
         <section className="mt-6">
