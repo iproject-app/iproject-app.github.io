@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
+import { AddExpenseForm } from '../components/AddExpenseForm';
 import type { Expense } from '../lib/types';
 
 const formatMoney = (amount: number, currency = 'BRL') => {
@@ -31,7 +32,7 @@ const categoryClass = (category: string) =>
 
 export function ProjectView() {
   const { slug } = useParams<{ slug: string }>();
-  const { data, loading, error } = useProjectData(slug);
+  const { data, loading, error, saving, save } = useProjectData(slug);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
@@ -53,6 +54,12 @@ export function ProjectView() {
           </p>
         )}
       </header>
+
+      {!loading && !error && data && (
+        <section className="mt-6">
+          <AddExpenseForm data={data} saving={saving} onAdd={save} />
+        </section>
+      )}
 
       <section className="mt-6">
         {loading && <Banner variant="muted">Loading project…</Banner>}
