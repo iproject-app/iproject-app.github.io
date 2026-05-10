@@ -13,14 +13,15 @@ export function Auth0ProviderWithNavigate({ children }: Props) {
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
-  // During local development without env vars, render children unguarded so
-  // the UI is still inspectable. Production builds should always have these set.
   if (!domain || !clientId) {
+    // In production we want a hard failure — silently swallowing missing env
+    // vars yields confusing 401s much later. Tests inject dummy values via
+    // VITE_AUTH0_DOMAIN/CLIENT_ID; production sets the real ones.
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.warn(
-        '[auth0] VITE_AUTH0_DOMAIN / VITE_AUTH0_CLIENT_ID not set — auth disabled.',
+        '[auth0] VITE_AUTH0_DOMAIN / VITE_AUTH0_CLIENT_ID not set; auth flows will not work.',
       );
-      return <>{children}</>;
     }
     throw new Error('Auth0 environment variables are not configured.');
   }
