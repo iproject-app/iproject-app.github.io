@@ -59,6 +59,10 @@ export interface Translations {
   'receipt.duplicateAttached': string;
   'receipt.replaceHint': string;
   'receipt.errorPrefix': string;
+  'receipt.viewing': string;
+  'receipt.viewError': string;
+  'receipt.openOriginal': string;
+  'receipt.pdfFallback': string;
 
   'billing.outstanding': string;
   'billing.linkedToBill': string;

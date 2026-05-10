@@ -13,6 +13,7 @@ import { BillBadge } from './BillBadge';
 import { BillPicker } from './BillPicker';
 import { CategoryBadge } from './CategoryBadge';
 import { ReceiptLink } from './ReceiptLink';
+import { ReceiptViewer } from './ReceiptViewer';
 
 interface Props {
   /** The expense being viewed/edited; null means closed. */
@@ -214,6 +215,9 @@ export function ExpenseDetailModal({
         {mode === 'view' ? (
           <>
             <DetailBody expense={expense} allExpenses={data.expenses} />
+            {expense.receipt && (
+              <ReceiptViewer filename={expense.receipt} slug={data.slug} />
+            )}
             {errorMessage && (
               <p
                 role="alert"
