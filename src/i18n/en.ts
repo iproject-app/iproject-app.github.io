@@ -45,6 +45,17 @@ export const en: Translations = {
   'detail.confirmDeleteBody': "This can't be undone.",
   'detail.confirmDeleteYes': 'Yes, delete',
 
+  'receipt.dropPrompt': 'Drop a receipt here',
+  'receipt.tapToPick': 'or tap to choose a file',
+  'receipt.aiHint':
+    'AI will extract date, amount, payer, payee, and category.',
+  'receipt.processing': 'Reading receipt with AI…',
+  'receipt.attached': 'Attached: {filename}',
+  'receipt.duplicateAttached':
+    'This receipt was already attached to another entry — using the same file.',
+  'receipt.replaceHint': 'Drop another to replace.',
+  'receipt.errorPrefix': "Couldn't process receipt:",
+
   'fields.date': 'Date',
   'fields.category': 'Category',
   'fields.payer': 'Payer',
