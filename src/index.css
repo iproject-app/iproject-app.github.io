@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #d9eaff;
+  --color-brand-200: #bcdaff;
+  --color-brand-300: #8ec1ff;
+  --color-brand-400: #599eff;
+  --color-brand-500: #2f7bff;
+  --color-brand-600: #1c5ef0;
+  --color-brand-700: #1a4cd1;
+  --color-brand-800: #1c41a8;
+  --color-brand-900: #1d3a85;
+  --color-brand-950: #142557;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Respect iOS safe areas; useful when the address bar collapses on scroll. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Ensure tap targets are usable on touch devices. */
+@media (hover: none) {
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+  }
+}
