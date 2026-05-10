@@ -143,3 +143,75 @@ test('list → detail → add → edit → delete', async ({ page }) => {
   const afterDelete = saved[saved.length - 1].expenses;
   expect(afterDelete).toHaveLength(1);
 });
+
+test('outstanding pill + bill linkage', async ({ page }) => {
+  type Bill = typeof initialExpense & { kind: 'bill' };
+  const bill: Bill = {
+    id: 'b1',
+    date: '2026-05-01',
+    category: 'Materials',
+    payer: '',
+    payee: 'Quarry',
+    description: 'Stone delivery quote',
+    amount: 1000,
+    currency: 'BRL',
+    kind: 'bill',
+  };
+
+  const projectData: ProjectFixture = {
+    slug: 'back-wall',
+    name: 'Back Wall',
+    currency: 'BRL',
+    customCategories: [],
+    contacts: [],
+    expenses: [bill],
+  };
+  const saved: { expenses: ExpenseLite[] }[] = [];
+
+  await page.route('**/api/projects', (route: Route) =>
+    route.fulfill({ json: { projects: [{ slug: 'back-wall', name: 'Back Wall', expenseCount: 1, total: 0 }] } }),
+  );
+  await page.route('**/api/data*', async (route: Route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { expenses: ExpenseLite[] };
+      saved.push(body);
+      projectData.expenses = body.expenses as ProjectFixture['expenses'];
+      await route.fulfill({ json: { ok: true } });
+      return;
+    }
+    await route.fulfill({ json: projectData });
+  });
+
+  await page.goto('/projects/back-wall');
+
+  // The single open bill drives the Outstanding pill in the page header.
+  // Scope to the header so we don't pick up the same total in the bill row.
+  await expect(page.getByText(/Outstanding/i)).toBeVisible();
+  await expect(page.locator('header').getByText(/1\.000,00/)).toBeVisible();
+
+  // Add a payment that links to the bill.
+  await page.getByRole('button', { name: /expand add expense form/i }).click();
+  await page.getByLabel(/^Date/).fill('2026-05-08');
+  await page.getByLabel(/^Payee/).fill('Quarry');
+  await page.getByLabel(/^Amount/).fill('300');
+  // Link to the bill by its id (the option's `value` is bill.id).
+  await page.getByLabel(/Link to bill/i).selectOption('b1');
+  await page.getByRole('button', { name: 'Add expense', exact: true }).click();
+
+  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(1);
+  const persisted = saved[saved.length - 1].expenses as Array<{
+    payee: string;
+    amount: number;
+    linkedTo?: string;
+  }>;
+  const payment = persisted.find((e) => e.payee === 'Quarry' && e.amount === 300);
+  expect(payment?.linkedTo).toBe('b1');
+
+  // After linking, the header pill should drop to R$ 700,00.
+  await expect(page.locator('header').getByText(/700,00/)).toBeVisible();
+
+  // Filter chips: Bills only should hide the payment row.
+  await page.getByRole('radio', { name: 'Bills only' }).click();
+  await expect(page.getByRole('table').getByText(/Stone delivery/)).toBeVisible();
+  await expect(page.getByRole('table').getByText('300')).toHaveCount(0);
+});

@@ -13,8 +13,10 @@ import {
   type ExtractedExpenseFields,
 } from '../lib/processReceipt';
 import { useTranslation, type TranslationKey } from '../i18n';
+import { openBills } from '../lib/bills';
 import { AddExpenseHeader } from './AddExpenseHeader';
 import { AddExpenseFields } from './AddExpenseFields';
+import { BillPicker } from './BillPicker';
 import { ReceiptDropZone, type ReceiptState } from './ReceiptDropZone';
 
 interface Props {
@@ -191,6 +193,17 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
             firstFieldRef={firstFieldRef}
             onChange={update}
           />
+
+          {!form.isBill && (
+            <BillPicker
+              bills={openBills(data.expenses)}
+              allExpenses={data.expenses}
+              value={extras.linkedTo}
+              onChange={(linkedTo) =>
+                setExtras((prev) => ({ ...prev, linkedTo }))
+              }
+            />
+          )}
 
           {errorMessage && (
             <p

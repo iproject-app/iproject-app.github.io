@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Expense, ProjectData } from '../lib/types';
 import { categorySuggestions } from '../lib/categories';
 import { formatDate, formatMoney } from '../lib/format';
+import { findBillById, openBills } from '../lib/bills';
 import {
   validateExpense,
   type ExpenseFormInput,
@@ -9,6 +10,7 @@ import {
 import { useTranslation, type TranslationKey } from '../i18n';
 import { AddExpenseFields } from './AddExpenseFields';
 import { BillBadge } from './BillBadge';
+import { BillPicker } from './BillPicker';
 import { CategoryBadge } from './CategoryBadge';
 import { ReceiptLink } from './ReceiptLink';
 
@@ -32,6 +34,22 @@ const expenseToForm = (e: Expense): ExpenseFormInput => ({
   isBill: e.kind === 'bill',
 });
 
+interface ReceiptExtras {
+  receipt?: string;
+  fxRate?: number;
+  fxRateDate?: string;
+  fxRateSource?: string;
+  linkedTo?: string;
+}
+
+const expenseToExtras = (e: Expense): ReceiptExtras => ({
+  receipt: e.receipt,
+  fxRate: e.fxRate,
+  fxRateDate: e.fxRateDate,
+  fxRateSource: e.fxRateSource,
+  linkedTo: e.linkedTo,
+});
+
 type FormError =
   | { kind: 'i18n'; key: TranslationKey }
   | { kind: 'raw'; message: string };
@@ -49,6 +67,7 @@ export function ExpenseDetailModal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<Mode>('view');
   const [form, setForm] = useState<ExpenseFormInput | null>(null);
+  const [extras, setExtras] = useState<ReceiptExtras>({});
   const [error, setError] = useState<FormError | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -56,11 +75,13 @@ export function ExpenseDetailModal({
   useEffect(() => {
     if (expense) {
       setForm(expenseToForm(expense));
+      setExtras(expenseToExtras(expense));
       setMode('view');
       setError(null);
       setConfirmingDelete(false);
     } else {
       setForm(null);
+      setExtras({});
     }
   }, [expense]);
 
@@ -92,7 +113,20 @@ export function ExpenseDetailModal({
       return;
     }
 
-    const updated: Expense = { id: expense.id, ...result.expense };
+    const updated: Expense = {
+      id: expense.id,
+      ...result.expense,
+      ...(extras.receipt ? { receipt: extras.receipt } : {}),
+      ...(extras.fxRate != null ? { fxRate: extras.fxRate } : {}),
+      ...(extras.fxRateDate ? { fxRateDate: extras.fxRateDate } : {}),
+      ...(extras.fxRateSource ? { fxRateSource: extras.fxRateSource } : {}),
+      // Bills can't link to other bills (server enforces this too).
+      ...(!result.expense.kind || result.expense.kind === 'bill'
+        ? {}
+        : extras.linkedTo
+          ? { linkedTo: extras.linkedTo }
+          : {}),
+    };
     const next: ProjectData = {
       ...data,
       expenses: data.expenses.map((e) => (e.id === expense.id ? updated : e)),
@@ -136,6 +170,7 @@ export function ExpenseDetailModal({
     // Discard local edits and return to view mode with the expense's stored
     // values; the modal stays open so the user can still see the details.
     setForm(expenseToForm(expense));
+    setExtras(expenseToExtras(expense));
     setMode('view');
     setError(null);
   };
@@ -178,7 +213,7 @@ export function ExpenseDetailModal({
 
         {mode === 'view' ? (
           <>
-            <DetailBody expense={expense} />
+            <DetailBody expense={expense} allExpenses={data.expenses} />
             {errorMessage && (
               <p
                 role="alert"
@@ -238,6 +273,18 @@ export function ExpenseDetailModal({
               suggestions={categorySuggestions(data.customCategories)}
               onChange={update}
             />
+            {!form.isBill && (
+              <BillPicker
+                bills={openBills(data.expenses).filter(
+                  (b) => b.id !== expense.id,
+                )}
+                allExpenses={data.expenses}
+                value={extras.linkedTo}
+                onChange={(linkedTo) =>
+                  setExtras((e) => ({ ...e, linkedTo }))
+                }
+              />
+            )}
             {errorMessage && (
               <p
                 role="alert"
@@ -270,8 +317,16 @@ export function ExpenseDetailModal({
   );
 }
 
-function DetailBody({ expense }: { expense: Expense }) {
+function DetailBody({
+  expense,
+  allExpenses,
+}: {
+  expense: Expense;
+  allExpenses: Expense[];
+}) {
+  const { t } = useTranslation();
   const isBill = expense.kind === 'bill';
+  const linkedBill = findBillById(expense.linkedTo, allExpenses);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
@@ -300,6 +355,14 @@ function DetailBody({ expense }: { expense: Expense }) {
         {isBill && <BillBadge />}
         {expense.receipt && <ReceiptLink filename={expense.receipt} />}
       </div>
+
+      {linkedBill && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-100">
+          <span className="font-medium">{t('billing.linkedToBill')}:</span>{' '}
+          {linkedBill.payee} · {formatDate(linkedBill.date)} ·{' '}
+          {formatMoney(linkedBill.amount, linkedBill.currency)}
+        </p>
+      )}
     </div>
   );
 }

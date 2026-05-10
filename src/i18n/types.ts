@@ -60,6 +60,17 @@ export interface Translations {
   'receipt.replaceHint': string;
   'receipt.errorPrefix': string;
 
+  'billing.outstanding': string;
+  'billing.linkedToBill': string;
+  'billing.linkToBill': string;
+  'billing.noLinkedBill': string;
+  'billing.noBillsToLink': string;
+
+  'filter.label': string;
+  'filter.all': string;
+  'filter.payments': string;
+  'filter.bills': string;
+
   'fields.date': string;
   'fields.category': string;
   'fields.payer': string;
