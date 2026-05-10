@@ -11,7 +11,7 @@ export function NavBar() {
           <img
             src="/logo.png"
             alt="iproject.app"
-            className="h-9 w-9 rounded-lg sm:h-10 sm:w-10"
+            className="h-9 w-auto sm:h-10"
           />
           <span className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             iproject<span className="text-brand-600">.app</span>
