@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { ProjectData } from '../lib/types';
+import type { Expense, ProjectData } from '../lib/types';
 import { todayISO } from '../lib/format';
 import { categorySuggestions } from '../lib/categories';
 import {
@@ -7,9 +7,15 @@ import {
   validateExpense,
   type ExpenseFormInput,
 } from '../lib/validation';
+import {
+  isDuplicateResponse,
+  useProcessReceipt,
+  type ExtractedExpenseFields,
+} from '../lib/processReceipt';
 import { useTranslation, type TranslationKey } from '../i18n';
 import { AddExpenseHeader } from './AddExpenseHeader';
 import { AddExpenseFields } from './AddExpenseFields';
+import { ReceiptDropZone, type ReceiptState } from './ReceiptDropZone';
 
 interface Props {
   data: ProjectData;
@@ -28,18 +34,30 @@ const blankForm = (): ExpenseFormInput => ({
   isBill: false,
 });
 
+/** AI-only metadata that round-trips on the expense but isn't user-edited. */
+interface ReceiptExtras {
+  receipt?: string;
+  fxRate?: number;
+  fxRateDate?: string;
+  fxRateSource?: string;
+  linkedTo?: string;
+}
+
 type FormError =
   | { kind: 'i18n'; key: TranslationKey }
   | { kind: 'raw'; message: string };
 
-/** Orchestrates the add-expense flow: form state, toggle, validation, save.
- *  Header and field grid are presentational and live in their own files. */
 export function AddExpenseForm({ data, saving, onAdd }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>(blankForm);
+  const [extras, setExtras] = useState<ReceiptExtras>({});
+  const [receiptState, setReceiptState] = useState<ReceiptState>({
+    kind: 'idle',
+  });
   const [error, setError] = useState<FormError | null>(null);
   const [open, setOpen] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
+  const processReceipt = useProcessReceipt();
 
   const suggestions = categorySuggestions(data.customCategories);
 
@@ -47,6 +65,52 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
     key: K,
     value: ExpenseFormInput[K],
   ) => setForm((f) => ({ ...f, [key]: value }));
+
+  const applyExtractedFields = (fields: ExtractedExpenseFields) => {
+    setForm((prev) => ({
+      ...prev,
+      date: fields.date ?? prev.date,
+      category: fields.category ?? prev.category,
+      payer: fields.payer ?? prev.payer,
+      payee: fields.payee ?? prev.payee,
+      description: fields.description ?? prev.description,
+      amount: fields.amount != null ? String(fields.amount) : prev.amount,
+      currency: fields.currency ?? prev.currency,
+      isBill: fields.kind === 'bill' ? true : prev.isBill,
+    }));
+  };
+
+  const handleReceiptFile = async (file: File) => {
+    setError(null);
+    setReceiptState({ kind: 'processing', filename: file.name });
+    try {
+      const res = await processReceipt(data.slug, file);
+      if (isDuplicateResponse(res)) {
+        // The backend recognized the file from a prior upload. Attach the
+        // existing canonical filename without overwriting form values the
+        // user may already have typed.
+        setExtras((e) => ({ ...e, receipt: res.duplicate.filename }));
+        setReceiptState({
+          kind: 'attached',
+          filename: res.duplicate.filename,
+          duplicate: true,
+        });
+        return;
+      }
+      applyExtractedFields(res.fields);
+      setExtras({
+        receipt: res.filename,
+        fxRate: res.fields.fxRate,
+        fxRateDate: res.fields.fxRateDate,
+        fxRateSource: res.fields.fxRateSource,
+        linkedTo: res.fields.linkedTo ?? undefined,
+      });
+      setReceiptState({ kind: 'attached', filename: res.filename });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setReceiptState({ kind: 'error', message: msg });
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -58,12 +122,21 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
       return;
     }
 
+    const expense: Expense = {
+      id: newExpenseId(),
+      ...result.expense,
+      ...(extras.receipt ? { receipt: extras.receipt } : {}),
+      ...(extras.fxRate != null ? { fxRate: extras.fxRate } : {}),
+      ...(extras.fxRateDate ? { fxRateDate: extras.fxRateDate } : {}),
+      ...(extras.fxRateSource ? { fxRateSource: extras.fxRateSource } : {}),
+      ...(extras.linkedTo ? { linkedTo: extras.linkedTo } : {}),
+    };
+
     try {
-      await onAdd({
-        ...data,
-        expenses: [...data.expenses, { id: newExpenseId(), ...result.expense }],
-      });
+      await onAdd({ ...data, expenses: [...data.expenses, expense] });
       setForm(blankForm());
+      setExtras({});
+      setReceiptState({ kind: 'idle' });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : t('errors.saveFailed');
       setError({ kind: 'raw', message });
@@ -84,6 +157,8 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
 
   const clear = () => {
     setForm(blankForm());
+    setExtras({});
+    setReceiptState({ kind: 'idle' });
     setError(null);
   };
 
@@ -103,7 +178,13 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
       <AddExpenseHeader open={open} onToggle={toggle} />
 
       {open && (
-        <div id="add-expense-fields">
+        <div id="add-expense-fields" className="mt-4 flex flex-col gap-3">
+          <ReceiptDropZone
+            state={receiptState}
+            onFile={handleReceiptFile}
+            disabled={saving}
+          />
+
           <AddExpenseFields
             form={form}
             suggestions={suggestions}
@@ -114,13 +195,13 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
           {errorMessage && (
             <p
               role="alert"
-              className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
             >
               {errorMessage}
             </p>
           )}
 
-          <div className="mt-4 flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-3">
             <button
               type="reset"
               onClick={clear}

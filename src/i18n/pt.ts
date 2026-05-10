@@ -45,6 +45,17 @@ export const pt: Translations = {
   'detail.confirmDeleteBody': 'Esta ação não pode ser desfeita.',
   'detail.confirmDeleteYes': 'Sim, excluir',
 
+  'receipt.dropPrompt': 'Solte um recibo aqui',
+  'receipt.tapToPick': 'ou toque para escolher um arquivo',
+  'receipt.aiHint':
+    'A IA extrairá data, valor, pagador, beneficiário e categoria.',
+  'receipt.processing': 'Lendo o recibo com IA…',
+  'receipt.attached': 'Anexado: {filename}',
+  'receipt.duplicateAttached':
+    'Este recibo já estava anexado a outro lançamento — usando o mesmo arquivo.',
+  'receipt.replaceHint': 'Solte outro para substituir.',
+  'receipt.errorPrefix': 'Não foi possível processar o recibo:',
+
   'fields.date': 'Data',
   'fields.category': 'Categoria',
   'fields.payer': 'Pagador',

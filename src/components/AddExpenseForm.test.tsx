@@ -1,9 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddExpenseForm } from './AddExpenseForm';
 import type { ProjectData } from '../lib/types';
 import { renderWithI18n } from '../test/helpers';
+
+// Default mock: succeed with a stable canonical filename and no extracted
+// fields. Individual tests override via mockProcessReceiptOnce.
+const processReceiptMock = vi.fn();
+vi.mock('../lib/processReceipt', async () => {
+  const actual = await vi.importActual<typeof import('../lib/processReceipt')>(
+    '../lib/processReceipt',
+  );
+  return {
+    ...actual,
+    useProcessReceipt: () => processReceiptMock,
+  };
+});
+
+const makeFile = (name = 'r.jpg') =>
+  new File(['bytes'], name, { type: 'image/jpeg' });
 
 const buildData = (over: Partial<ProjectData> = {}): ProjectData => ({
   slug: 'back-wall',
@@ -26,6 +42,10 @@ async function fillRequired(
 }
 
 describe('AddExpenseForm', () => {
+  beforeEach(() => {
+    processReceiptMock.mockReset();
+  });
+
   it('renders collapsed by default with title and hint visible', () => {
     renderWithI18n(
       <AddExpenseForm data={buildData()} saving={false} onAdd={vi.fn()} />,
@@ -159,5 +179,120 @@ describe('AddExpenseForm', () => {
     await user.click(screen.getByRole('button', { name: 'Add expense' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
+  });
+
+  describe('receipt upload + auto-fill', () => {
+    it('auto-fills the form with AI-extracted fields and stores the canonical filename on submit', async () => {
+      const user = userEvent.setup();
+      const onAdd = vi.fn().mockResolvedValue(undefined);
+      processReceiptMock.mockResolvedValueOnce({
+        fields: {
+          date: '2026-05-04',
+          amount: 500,
+          payer: 'Shelby',
+          payee: 'Francisco',
+          description: 'PIX 500',
+          category: 'Labor',
+          currency: 'BRL',
+          kind: 'expense',
+          fxRate: undefined,
+          linkedTo: null,
+        },
+        filename: 'canonical.jpg',
+      });
+
+      const { container } = renderWithI18n(
+        <AddExpenseForm data={buildData()} saving={false} onAdd={onAdd} />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: /expand add expense form/i }),
+      );
+      const input = container.querySelector(
+        'input[type=file]',
+      ) as HTMLInputElement;
+      await user.upload(input, makeFile('snap.jpg'));
+
+      // Wait for async processing to settle; the attached message is a
+      // reliable signal that auto-fill ran.
+      await waitFor(() =>
+        expect(screen.getByText(/Attached: canonical\.jpg/)).toBeVisible(),
+      );
+
+      expect(screen.getByLabelText(/^Payee/)).toHaveValue('Francisco');
+      expect(screen.getByLabelText(/^Amount/)).toHaveValue(500);
+      expect(screen.getByLabelText(/^Payer/)).toHaveValue('Shelby');
+      expect(screen.getByLabelText(/^Date/)).toHaveValue('2026-05-04');
+
+      await user.click(screen.getByRole('button', { name: 'Add expense' }));
+
+      expect(onAdd).toHaveBeenCalledTimes(1);
+      const next = onAdd.mock.calls[0][0] as ProjectData;
+      expect(next.expenses[0].receipt).toBe('canonical.jpg');
+      expect(next.expenses[0].payee).toBe('Francisco');
+    });
+
+    it('attaches the duplicate filename without overwriting form fields', async () => {
+      const user = userEvent.setup();
+      const onAdd = vi.fn().mockResolvedValue(undefined);
+      processReceiptMock.mockResolvedValueOnce({
+        duplicate: {
+          type: 'exact-file',
+          filename: 'already.jpg',
+          expense: {
+            id: 'seed-01',
+            date: '2026-01-01',
+            category: 'Other',
+            payer: '',
+            payee: 'Dupe',
+            description: '',
+            amount: 1,
+          },
+        },
+      });
+
+      const { container } = renderWithI18n(
+        <AddExpenseForm data={buildData()} saving={false} onAdd={onAdd} />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: /expand add expense form/i }),
+      );
+      // Type a custom payee, then drop a duplicate — the payee must survive.
+      await user.type(screen.getByLabelText(/^Payee/), 'Custom');
+      const input = container.querySelector(
+        'input[type=file]',
+      ) as HTMLInputElement;
+      await user.upload(input, makeFile('snap.jpg'));
+
+      await waitFor(() =>
+        expect(screen.getByText(/Attached: already\.jpg/)).toBeVisible(),
+      );
+      expect(screen.getByText(/already attached/i)).toBeVisible();
+      expect(screen.getByLabelText(/^Payee/)).toHaveValue('Custom');
+    });
+
+    it('shows the dropzone error state when processing fails', async () => {
+      const user = userEvent.setup();
+      processReceiptMock.mockRejectedValueOnce(new Error('502 Bad Gateway'));
+
+      const { container } = renderWithI18n(
+        <AddExpenseForm
+          data={buildData()}
+          saving={false}
+          onAdd={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: /expand add expense form/i }),
+      );
+      const input = container.querySelector(
+        'input[type=file]',
+      ) as HTMLInputElement;
+      await user.upload(input, makeFile('snap.jpg'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/502/);
+    });
   });
 });

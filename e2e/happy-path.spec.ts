@@ -73,17 +73,49 @@ test('list → detail → add → edit → delete', async ({ page }) => {
   // Existing entry is rendered in the table.
   await expect(page.getByRole('table').getByText('→ Francisco')).toBeVisible();
 
-  // Add an expense.
+  // Mock the AI extraction endpoint to auto-fill some of the form fields.
+  await page.route('**/api/process-receipt*', (route: Route) =>
+    route.fulfill({
+      json: {
+        fields: {
+          date: '2026-05-10',
+          amount: 99.5,
+          payer: 'AI Payer',
+          payee: 'Pedro',
+          description: 'Receipt-extracted',
+          category: 'Materials',
+          currency: 'BRL',
+          kind: 'expense',
+        },
+        filename: 'canonical-pedro.jpg',
+      },
+    }),
+  );
+
+  // Open the form, drop a receipt, verify the AI auto-filled the fields.
   await page.getByRole('button', { name: /expand add expense form/i }).click();
-  await page.getByLabel(/^Date/).fill('2026-05-10');
-  await page.getByLabel(/^Payee/).fill('Pedro');
-  await page.getByLabel(/^Amount/).fill('99.50');
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles({
+      name: 'snap.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('fake-jpeg-bytes'),
+    });
+  await expect(page.getByText(/Attached: canonical-pedro\.jpg/)).toBeVisible();
+  await expect(page.getByLabel(/^Payee/)).toHaveValue('Pedro');
+  await expect(page.getByLabel(/^Amount/)).toHaveValue('99.5');
+
   await page.getByRole('button', { name: 'Add expense', exact: true }).click();
 
   await expect.poll(() => saved.length).toBeGreaterThanOrEqual(1);
   const afterAdd = saved[saved.length - 1].expenses;
   expect(afterAdd).toHaveLength(2);
-  expect(afterAdd.find((e) => e.payee === 'Pedro')?.amount).toBe(99.5);
+  const pedro = afterAdd.find((e) => e.payee === 'Pedro');
+  expect(pedro?.amount).toBe(99.5);
+  // The canonical filename from the OCR endpoint round-trips onto the expense.
+  expect((pedro as unknown as { receipt?: string })?.receipt).toBe(
+    'canonical-pedro.jpg',
+  );
 
   // Click the original Francisco row by content (the new Pedro row is sorted
   // first). Modal opens in *view* mode now — the pencil icon enters edit.

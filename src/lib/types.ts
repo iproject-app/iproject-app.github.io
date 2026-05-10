@@ -21,6 +21,8 @@ export interface Expense {
   amount: number;
   currency?: string;
   fxRate?: number;
+  fxRateDate?: string;
+  fxRateSource?: string;
   receipt?: string;
   kind?: ExpenseKind;
   linkedTo?: string;

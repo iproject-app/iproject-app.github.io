@@ -51,6 +51,15 @@ export interface Translations {
   'detail.confirmDeleteBody': string;
   'detail.confirmDeleteYes': string;
 
+  'receipt.dropPrompt': string;
+  'receipt.tapToPick': string;
+  'receipt.aiHint': string;
+  'receipt.processing': string;
+  'receipt.attached': string;
+  'receipt.duplicateAttached': string;
+  'receipt.replaceHint': string;
+  'receipt.errorPrefix': string;
+
   'fields.date': string;
   'fields.category': string;
   'fields.payer': string;
