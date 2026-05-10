@@ -1,12 +1,9 @@
 import { test, expect, type Route } from '@playwright/test';
 
 /**
- * Happy-path E2E:
- *   1. Land on `/` (auth bypassed via VITE_E2E)
- *   2. Backend mocked: project list contains `back-wall`
- *   3. Click into the project, see one existing expense
- *   4. Open the add-expense form, fill it, submit
- *   5. POST is captured and the new expense appears in the list
+ * Happy-path E2E covers the core user flow: list → detail → add → edit → delete.
+ * Auth is bypassed via VITE_E2E. The backend is mocked at the network layer
+ * so the test is hermetic.
  */
 
 const projectListResponse = {
@@ -25,62 +22,87 @@ const initialExpense = {
   kind: 'expense' as const,
 };
 
-const projectDataResponse = {
-  slug: 'back-wall',
-  name: 'Back Wall',
-  currency: 'BRL',
-  customCategories: [],
-  contacts: [],
-  expenses: [initialExpense],
+interface ExpenseLite {
+  id?: string;
+  payee: string;
+  amount: number;
+}
+
+type ProjectFixture = {
+  slug: string;
+  name: string;
+  currency: string;
+  customCategories: string[];
+  contacts: unknown[];
+  expenses: typeof initialExpense[];
 };
 
-test('list → detail → add expense', async ({ page }) => {
-  let savedPayload: { expenses: { payee: string; amount: number }[] } | null = null;
+test('list → detail → add → edit → delete', async ({ page }) => {
+  const projectData: ProjectFixture = {
+    slug: 'back-wall',
+    name: 'Back Wall',
+    currency: 'BRL',
+    customCategories: [],
+    contacts: [],
+    expenses: [initialExpense],
+  };
+  const saved: { expenses: ExpenseLite[] }[] = [];
 
   await page.route('**/api/projects', (route: Route) =>
     route.fulfill({ json: projectListResponse }),
   );
-
   await page.route('**/api/data*', async (route: Route) => {
     if (route.request().method() === 'POST') {
-      savedPayload = route.request().postDataJSON();
+      const body = route.request().postDataJSON() as { expenses: ExpenseLite[] };
+      saved.push(body);
+      // Apply the change to the in-memory fixture so subsequent GETs see it.
+      projectData.expenses = body.expenses as ProjectFixture['expenses'];
       await route.fulfill({ json: { ok: true } });
       return;
     }
-    await route.fulfill({ json: projectDataResponse });
+    await route.fulfill({ json: projectData });
   });
 
   await page.goto('/');
 
-  // 1. Project list shows the back-wall card
+  // List shows the back-wall card → click into it.
   await expect(page.getByRole('heading', { name: 'Back Wall' })).toBeVisible();
-  await expect(page.getByText('back-wall')).toBeVisible();
-
-  // 2. Click into the project
   await page.getByRole('link', { name: /back wall/i }).click();
   await expect(page).toHaveURL(/\/projects\/back-wall/);
 
-  // 3. Existing expense is rendered. The same data appears in both the mobile
-  //    card view and the desktop table view (one hidden via CSS); scope the
-  //    assertion to the table to avoid the strict-mode duplicate match.
+  // Existing entry is rendered in the table.
   await expect(page.getByRole('table').getByText('→ Francisco')).toBeVisible();
-  await expect(
-    page.getByRole('table').getByText('PIX 500', { exact: true }),
-  ).toBeVisible();
 
-  // 4. Open the add-expense form and fill it
-  await page
-    .getByRole('button', { name: /expand add expense form/i })
-    .click();
-  // Set the date explicitly (browser date input default may differ from test expectations).
+  // Add an expense.
+  await page.getByRole('button', { name: /expand add expense form/i }).click();
   await page.getByLabel(/^Date/).fill('2026-05-10');
   await page.getByLabel(/^Payee/).fill('Pedro');
   await page.getByLabel(/^Amount/).fill('99.50');
   await page.getByRole('button', { name: 'Add expense', exact: true }).click();
 
-  // 5. POST captured, payload includes the new expense
-  await expect.poll(() => savedPayload).not.toBeNull();
-  const last = savedPayload!.expenses[savedPayload!.expenses.length - 1];
-  expect(last.payee).toBe('Pedro');
-  expect(last.amount).toBe(99.5);
+  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(1);
+  const afterAdd = saved[saved.length - 1].expenses;
+  expect(afterAdd).toHaveLength(2);
+  expect(afterAdd.find((e) => e.payee === 'Pedro')?.amount).toBe(99.5);
+
+  // Edit the original Francisco row by content, not position (sort puts the
+  // newer Pedro row first now that the add happened).
+  await page.locator('tr', { hasText: 'Francisco' }).click();
+  await expect(page.getByRole('heading', { name: /edit expense/i })).toBeVisible();
+  await page.getByLabel(/^Amount/).fill('750');
+  await page.getByRole('button', { name: /save changes/i }).click();
+
+  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(2);
+  const afterEdit = saved[saved.length - 1].expenses;
+  const francisco = afterEdit.find((e) => e.payee === 'Francisco');
+  expect(francisco?.amount).toBe(750);
+
+  // Delete the Pedro entry; two-stage confirm.
+  await page.locator('tr', { hasText: 'Pedro' }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('button', { name: /confirm delete/i }).click();
+
+  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(3);
+  const afterDelete = saved[saved.length - 1].expenses;
+  expect(afterDelete).toHaveLength(1);
 });

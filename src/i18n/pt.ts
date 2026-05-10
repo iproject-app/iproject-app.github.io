@@ -28,6 +28,14 @@ export const pt: Translations = {
   'add.saving': 'Salvando…',
   'add.submit': 'Adicionar despesa',
 
+  'edit.title': 'Editar despesa',
+  'edit.save': 'Salvar alterações',
+  'edit.cancel': 'Cancelar',
+  'edit.delete': 'Excluir',
+  'edit.confirmDelete': 'Confirmar exclusão',
+  'edit.deleting': 'Excluindo…',
+  'edit.close': 'Fechar diálogo',
+
   'fields.date': 'Data',
   'fields.category': 'Categoria',
   'fields.payer': 'Pagador',

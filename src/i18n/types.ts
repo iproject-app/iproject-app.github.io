@@ -34,6 +34,14 @@ export interface Translations {
   'add.saving': string;
   'add.submit': string;
 
+  'edit.title': string;
+  'edit.save': string;
+  'edit.cancel': string;
+  'edit.delete': string;
+  'edit.confirmDelete': string;
+  'edit.deleting': string;
+  'edit.close': string;
+
   'fields.date': string;
   'fields.category': string;
   'fields.payer': string;

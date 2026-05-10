@@ -5,6 +5,7 @@ import { ExpenseRow } from './ExpenseRow';
 
 interface Props {
   expenses: Expense[];
+  onRowClick?: (expense: Expense) => void;
 }
 
 /** Newest first; stable tie-break by id descending. */
@@ -15,16 +16,19 @@ export function sortExpenses(expenses: Expense[]): Expense[] {
   });
 }
 
-export function ExpenseList({ expenses }: Props) {
+export function ExpenseList({ expenses, onRowClick }: Props) {
   const { t } = useTranslation();
   const sorted = sortExpenses(expenses);
 
   return (
     <>
-      <ul className="flex flex-col gap-3 sm:hidden" aria-label={t('home.expenses')}>
+      <ul
+        className="flex flex-col gap-3 sm:hidden"
+        aria-label={t('home.expenses')}
+      >
         {sorted.map((e) => (
           <li key={e.id}>
-            <ExpenseCard expense={e} />
+            <ExpenseCard expense={e} onClick={onRowClick} />
           </li>
         ))}
       </ul>
@@ -35,14 +39,18 @@ export function ExpenseList({ expenses }: Props) {
             <tr>
               <th className="px-4 py-3 font-medium">{t('table.date')}</th>
               <th className="px-4 py-3 font-medium">{t('table.category')}</th>
-              <th className="px-4 py-3 font-medium">{t('table.payerToPayee')}</th>
+              <th className="px-4 py-3 font-medium">
+                {t('table.payerToPayee')}
+              </th>
               <th className="px-4 py-3 font-medium">{t('table.description')}</th>
-              <th className="px-4 py-3 text-right font-medium">{t('table.amount')}</th>
+              <th className="px-4 py-3 text-right font-medium">
+                {t('table.amount')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {sorted.map((e) => (
-              <ExpenseRow key={e.id} expense={e} />
+              <ExpenseRow key={e.id} expense={e} onClick={onRowClick} />
             ))}
           </tbody>
         </table>
