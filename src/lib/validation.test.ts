@@ -36,27 +36,27 @@ describe('validateExpense', () => {
 
   it('rejects non-numeric amount', () => {
     const r = validateExpense(validInput({ amount: 'abc' }));
-    expect(r).toEqual({ ok: false, error: expect.stringMatching(/amount/i) });
+    expect(r).toEqual({ ok: false, errorKey: 'errors.amountPositive' });
   });
 
   it('rejects zero amount', () => {
     const r = validateExpense(validInput({ amount: '0' }));
-    expect(r).toEqual({ ok: false, error: expect.stringMatching(/positive/i) });
+    expect(r).toEqual({ ok: false, errorKey: 'errors.amountPositive' });
   });
 
   it('rejects negative amount', () => {
     const r = validateExpense(validInput({ amount: '-5' }));
-    expect(r).toEqual({ ok: false, error: expect.stringMatching(/positive/i) });
+    expect(r).toEqual({ ok: false, errorKey: 'errors.amountPositive' });
   });
 
   it('rejects empty payee', () => {
     const r = validateExpense(validInput({ payee: '   ' }));
-    expect(r).toEqual({ ok: false, error: expect.stringMatching(/payee/i) });
+    expect(r).toEqual({ ok: false, errorKey: 'errors.payeeRequired' });
   });
 
   it('rejects missing date', () => {
     const r = validateExpense(validInput({ date: '' }));
-    expect(r).toEqual({ ok: false, error: expect.stringMatching(/date/i) });
+    expect(r).toEqual({ ok: false, errorKey: 'errors.dateRequired' });
   });
 
   it('trims whitespace from text fields', () => {

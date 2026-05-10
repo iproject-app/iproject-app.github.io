@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import { SUPPORTED_CURRENCIES } from '../lib/categories';
 import type { ExpenseFormInput } from '../lib/validation';
+import { useTranslation } from '../i18n';
 import { Field, fieldInputClass } from './Field';
 
 interface Props {
@@ -21,9 +22,10 @@ export function AddExpenseFields({
   firstFieldRef,
   onChange,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <Field label="Date">
+      <Field label={t('fields.date')}>
         <input
           ref={firstFieldRef}
           type="date"
@@ -34,7 +36,7 @@ export function AddExpenseFields({
         />
       </Field>
 
-      <Field label="Category">
+      <Field label={t('fields.category')}>
         <input
           type="text"
           list="category-suggestions"
@@ -50,7 +52,7 @@ export function AddExpenseFields({
         </datalist>
       </Field>
 
-      <Field label="Payer" hint="Leave blank for a bill / quote.">
+      <Field label={t('fields.payer')} hint={t('fields.payerHint')}>
         <input
           type="text"
           value={form.payer}
@@ -60,7 +62,7 @@ export function AddExpenseFields({
         />
       </Field>
 
-      <Field label="Payee">
+      <Field label={t('fields.payee')}>
         <input
           type="text"
           value={form.payee}
@@ -70,7 +72,7 @@ export function AddExpenseFields({
         />
       </Field>
 
-      <Field label="Description" className="sm:col-span-2">
+      <Field label={t('fields.description')} className="sm:col-span-2">
         <input
           type="text"
           value={form.description}
@@ -79,7 +81,7 @@ export function AddExpenseFields({
         />
       </Field>
 
-      <Field label="Amount">
+      <Field label={t('fields.amount')}>
         <input
           type="number"
           inputMode="decimal"
@@ -92,7 +94,7 @@ export function AddExpenseFields({
         />
       </Field>
 
-      <Field label="Currency">
+      <Field label={t('fields.currency')}>
         <select
           value={form.currency}
           onChange={(e) => onChange('currency', e.target.value)}
@@ -113,7 +115,7 @@ export function AddExpenseFields({
           onChange={(e) => onChange('isBill', e.target.checked)}
           className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
         />
-        Mark as bill (orçamento) — money owed, not yet paid.
+        {t('fields.markAsBill')}
       </label>
     </div>
   );

@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import type { Project } from '../lib/types';
 import { formatMoney } from '../lib/format';
+import { useTranslation } from '../i18n';
 
 interface Props {
   project: Project;
 }
 
 export function ProjectCard({ project }: Props) {
+  const { t } = useTranslation();
   return (
     <Link
       to={`/projects/${project.slug}`}
@@ -18,11 +20,11 @@ export function ProjectCard({ project }: Props) {
       </p>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
-          <dt className="text-slate-500">Expenses</dt>
+          <dt className="text-slate-500">{t('home.expenses')}</dt>
           <dd className="font-medium text-slate-900">{project.expenseCount}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Total</dt>
+          <dt className="text-slate-500">{t('home.total')}</dt>
           <dd className="font-medium text-slate-900">
             {formatMoney(project.total)}
           </dd>

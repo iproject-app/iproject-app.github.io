@@ -1,4 +1,5 @@
 import type { Expense } from '../lib/types';
+import { useTranslation } from '../i18n';
 import { ExpenseCard } from './ExpenseCard';
 import { ExpenseRow } from './ExpenseRow';
 
@@ -15,11 +16,12 @@ export function sortExpenses(expenses: Expense[]): Expense[] {
 }
 
 export function ExpenseList({ expenses }: Props) {
+  const { t } = useTranslation();
   const sorted = sortExpenses(expenses);
 
   return (
     <>
-      <ul className="flex flex-col gap-3 sm:hidden" aria-label="Expenses">
+      <ul className="flex flex-col gap-3 sm:hidden" aria-label={t('home.expenses')}>
         {sorted.map((e) => (
           <li key={e.id}>
             <ExpenseCard expense={e} />
@@ -31,11 +33,11 @@ export function ExpenseList({ expenses }: Props) {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3 font-medium">Date</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">Payer → Payee</th>
-              <th className="px-4 py-3 font-medium">Description</th>
-              <th className="px-4 py-3 text-right font-medium">Amount</th>
+              <th className="px-4 py-3 font-medium">{t('table.date')}</th>
+              <th className="px-4 py-3 font-medium">{t('table.category')}</th>
+              <th className="px-4 py-3 font-medium">{t('table.payerToPayee')}</th>
+              <th className="px-4 py-3 font-medium">{t('table.description')}</th>
+              <th className="px-4 py-3 text-right font-medium">{t('table.amount')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
