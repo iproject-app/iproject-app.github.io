@@ -187,24 +187,49 @@ export function ExpenseDetailModal({
                 {errorMessage}
               </p>
             )}
-            <footer className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={saving}
-                className={`inline-flex h-11 items-center justify-center rounded-lg border px-4 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  confirmingDelete
-                    ? 'border-rose-300 bg-rose-600 text-white hover:bg-rose-700'
-                    : 'border-rose-300 bg-white text-rose-700 hover:bg-rose-50'
-                }`}
+            {confirmingDelete ? (
+              <div
+                role="alertdialog"
+                aria-labelledby="confirm-delete-title"
+                className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
               >
-                {saving && confirmingDelete
-                  ? t('edit.deleting')
-                  : confirmingDelete
-                    ? t('edit.confirmDelete')
-                    : t('edit.delete')}
-              </button>
-            </footer>
+                <p id="confirm-delete-title" className="font-semibold">
+                  {t('detail.confirmDeleteTitle')}
+                </p>
+                <p className="mt-1 text-rose-800/90">
+                  {t('detail.confirmDeleteBody')}
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={saving}
+                    className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {t('edit.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={saving}
+                    className="inline-flex h-11 items-center justify-center rounded-lg bg-rose-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? t('edit.deleting') : t('detail.confirmDeleteYes')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <footer className="flex items-center justify-start">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-rose-300 bg-white px-4 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t('edit.delete')}
+                </button>
+              </footer>
+            )}
           </>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="contents">
@@ -246,61 +271,36 @@ export function ExpenseDetailModal({
 }
 
 function DetailBody({ expense }: { expense: Expense }) {
-  const { t } = useTranslation();
   const isBill = expense.kind === 'bill';
-  const dash = t('detail.dash');
   return (
-    <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-3">
-      <DetailRow label={t('table.date')} value={formatDate(expense.date)} />
-      <DetailRow
-        label={t('table.category')}
-        value={
-          <span className="inline-flex items-center gap-1.5">
-            <CategoryBadge category={expense.category} />
-            {isBill && <BillBadge />}
-          </span>
-        }
-      />
-      <DetailRow label={t('detail.payer')} value={expense.payer || dash} />
-      <DetailRow label={t('detail.payee')} value={expense.payee} />
-      {expense.description && (
-        <DetailRow
-          label={t('table.description')}
-          value={expense.description}
-        />
-      )}
-      <DetailRow
-        label={t('table.amount')}
-        value={
-          <span className="font-semibold text-slate-900">
-            {formatMoney(expense.amount, expense.currency)}
-          </span>
-        }
-      />
-      {expense.receipt && (
-        <DetailRow
-          label={t('receiptLink.label')}
-          value={<ReceiptLink filename={expense.receipt} />}
-        />
-      )}
-    </dl>
-  );
-}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500">{formatDate(expense.date)}</p>
+          <p className="mt-0.5 truncate text-base font-semibold text-slate-900 sm:text-lg">
+            {expense.payee}
+          </p>
+          {expense.payer && (
+            <p className="truncate text-xs text-slate-500">
+              from {expense.payer}
+            </p>
+          )}
+        </div>
+        <p className="whitespace-nowrap text-right text-lg font-semibold text-slate-900 sm:text-xl">
+          {formatMoney(expense.amount, expense.currency)}
+        </p>
+      </div>
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <>
-      <dt className="text-xs uppercase tracking-wide text-slate-500 sm:text-sm sm:normal-case sm:tracking-normal">
-        {label}
-      </dt>
-      <dd className="text-slate-900">{value}</dd>
-    </>
+      {expense.description && (
+        <p className="text-sm text-slate-700">{expense.description}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <CategoryBadge category={expense.category} />
+        {isBill && <BillBadge />}
+        {expense.receipt && <ReceiptLink filename={expense.receipt} />}
+      </div>
+    </div>
   );
 }
 
@@ -339,4 +339,4 @@ function CloseIcon() {
 }
 
 const dialogClass =
-  'w-full max-w-xl rounded-2xl bg-white p-0 shadow-xl backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm m-auto';
+  'w-full max-w-xl rounded-2xl border-0 bg-white p-0 shadow-xl outline-none backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm m-auto';

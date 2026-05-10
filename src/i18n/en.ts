@@ -41,6 +41,9 @@ export const en: Translations = {
   'detail.payer': 'Payer',
   'detail.payee': 'Payee',
   'detail.dash': '—',
+  'detail.confirmDeleteTitle': 'Delete this entry?',
+  'detail.confirmDeleteBody': "This can't be undone.",
+  'detail.confirmDeleteYes': 'Yes, delete',
 
   'fields.date': 'Date',
   'fields.category': 'Category',

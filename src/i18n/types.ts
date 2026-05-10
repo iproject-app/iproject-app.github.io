@@ -47,6 +47,9 @@ export interface Translations {
   'detail.payer': string;
   'detail.payee': string;
   'detail.dash': string;
+  'detail.confirmDeleteTitle': string;
+  'detail.confirmDeleteBody': string;
+  'detail.confirmDeleteYes': string;
 
   'fields.date': string;
   'fields.category': string;

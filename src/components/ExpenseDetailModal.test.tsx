@@ -136,7 +136,7 @@ describe('ExpenseDetailModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('delete in view mode requires a second click to confirm', async () => {
+  it('shows an "Are you sure" prompt before delete; second click confirms', async () => {
     const user = userEvent.setup();
     const expense = buildExpense();
     const onSave = vi.fn().mockResolvedValue(undefined);
@@ -155,13 +155,39 @@ describe('ExpenseDetailModal', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onSave).not.toHaveBeenCalled();
     expect(
-      screen.getByRole('button', { name: /confirm delete/i }),
+      screen.getByRole('alertdialog', { name: /delete this entry/i }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /confirm delete/i }));
+    await user.click(screen.getByRole('button', { name: /yes, delete/i }));
     expect(onSave).toHaveBeenCalledTimes(1);
     expect((onSave.mock.calls[0][0] as ProjectData).expenses).toHaveLength(0);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('cancel in the delete prompt aborts and returns to view mode', async () => {
+    const user = userEvent.setup();
+    const expense = buildExpense();
+    const onSave = vi.fn();
+
+    renderWithI18n(
+      <ExpenseDetailModal
+        expense={expense}
+        data={buildData({ expenses: [expense] })}
+        saving={false}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('alertdialog', { name: /delete this entry/i }),
+    ).not.toBeInTheDocument();
+    // Delete button is back to its default label.
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
   it('shows the localized validation error in edit mode', async () => {

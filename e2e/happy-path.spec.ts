@@ -99,10 +99,13 @@ test('list → detail → add → edit → delete', async ({ page }) => {
   const francisco = afterEdit.find((e) => e.payee === 'Francisco');
   expect(francisco?.amount).toBe(750);
 
-  // Delete the Pedro entry from view mode; two-stage confirm.
+  // Delete the Pedro entry from view mode; "Are you sure?" prompt + confirm.
   await page.locator('tr', { hasText: 'Pedro' }).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
-  await page.getByRole('button', { name: /confirm delete/i }).click();
+  await expect(
+    page.getByRole('alertdialog', { name: /delete this entry/i }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: /yes, delete/i }).click();
 
   await expect.poll(() => saved.length).toBeGreaterThanOrEqual(3);
   const afterDelete = saved[saved.length - 1].expenses;
