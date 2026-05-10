@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddExpenseFields } from './AddExpenseFields';
 import type { ExpenseFormInput } from '../lib/validation';
+import { renderWithI18n } from '../test/helpers';
 
 const blank = (): ExpenseFormInput => ({
   date: '2026-05-10',
@@ -16,8 +17,8 @@ const blank = (): ExpenseFormInput => ({
 });
 
 describe('AddExpenseFields', () => {
-  it('renders one input per form field', () => {
-    render(
+  it('renders one input per form field (English defaults)', () => {
+    renderWithI18n(
       <AddExpenseFields form={blank()} suggestions={[]} onChange={vi.fn()} />,
     );
     expect(screen.getByLabelText(/^Date/)).toBeInTheDocument();
@@ -30,8 +31,23 @@ describe('AddExpenseFields', () => {
     expect(screen.getByLabelText(/Mark as bill/)).toBeInTheDocument();
   });
 
+  it('renders the same inputs with Portuguese labels', () => {
+    renderWithI18n(
+      <AddExpenseFields form={blank()} suggestions={[]} onChange={vi.fn()} />,
+      { language: 'pt' },
+    );
+    expect(screen.getByLabelText(/^Data/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Categoria/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Pagador/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Beneficiário/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Descrição/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Valor/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Moeda/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Marcar como orçamento/)).toBeInTheDocument();
+  });
+
   it('reflects the form prop in input values', () => {
-    render(
+    renderWithI18n(
       <AddExpenseFields
         form={{ ...blank(), payee: 'Pedro', amount: '99.50', isBill: true }}
         suggestions={[]}
@@ -46,7 +62,7 @@ describe('AddExpenseFields', () => {
   it('calls onChange with the field key and new value when typing', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(
+    renderWithI18n(
       <AddExpenseFields form={blank()} suggestions={[]} onChange={onChange} />,
     );
 
@@ -56,7 +72,7 @@ describe('AddExpenseFields', () => {
   });
 
   it('renders suggestion options inside the category datalist', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <AddExpenseFields
         form={blank()}
         suggestions={['Sand', 'Roofing']}

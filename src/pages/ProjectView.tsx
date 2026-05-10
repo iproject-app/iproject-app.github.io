@@ -1,12 +1,23 @@
 import { Link, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
+import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
 import { Banner } from '../components/Banner';
 import { ExpenseList } from '../components/ExpenseList';
 
 export function ProjectView() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const { data, loading, error, saving, save } = useProjectData(slug);
+
+  const entriesLabel = data
+    ? t(
+        data.expenses.length === 1
+          ? 'project.entriesCountSingular'
+          : 'project.entriesCountPlural',
+        { count: data.expenses.length },
+      )
+    : '';
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
@@ -14,7 +25,7 @@ export function ProjectView() {
         to="/"
         className="inline-flex items-center text-sm text-slate-500 hover:text-slate-800"
       >
-        ← All projects
+        {t('project.backToList')}
       </Link>
 
       <header className="mt-3">
@@ -23,8 +34,7 @@ export function ProjectView() {
         </h1>
         {data && (
           <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">
-            {data.slug} · {data.expenses.length}{' '}
-            {data.expenses.length === 1 ? 'entry' : 'entries'}
+            {data.slug} · {entriesLabel}
           </p>
         )}
       </header>
@@ -36,15 +46,15 @@ export function ProjectView() {
       )}
 
       <section className="mt-6">
-        {loading && <Banner>Loading project…</Banner>}
+        {loading && <Banner>{t('project.loading')}</Banner>}
         {!loading && error && (
           <Banner variant="error">
-            <p className="font-medium">Couldn&rsquo;t load project.</p>
+            <p className="font-medium">{t('project.errorLoading')}</p>
             <p className="mt-1 break-words text-rose-700/90">{error}</p>
           </Banner>
         )}
         {!loading && !error && data && data.expenses.length === 0 && (
-          <Banner>No entries yet.</Banner>
+          <Banner>{t('project.noEntries')}</Banner>
         )}
         {!loading && !error && data && data.expenses.length > 0 && (
           <ExpenseList expenses={data.expenses} />

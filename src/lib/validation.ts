@@ -1,4 +1,5 @@
 import type { Expense } from './types';
+import type { TranslationKey } from '../i18n';
 
 export interface ExpenseFormInput {
   date: string;
@@ -14,18 +15,18 @@ export interface ExpenseFormInput {
 
 export type ExpenseValidation =
   | { ok: true; expense: Omit<Expense, 'id'> }
-  | { ok: false; error: string };
+  | { ok: false; errorKey: TranslationKey };
 
 export function validateExpense(input: ExpenseFormInput): ExpenseValidation {
   const amount = Number(input.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { ok: false, error: 'Amount must be a positive number.' };
+    return { ok: false, errorKey: 'errors.amountPositive' };
   }
   if (!input.payee.trim()) {
-    return { ok: false, error: 'Payee is required.' };
+    return { ok: false, errorKey: 'errors.payeeRequired' };
   }
   if (!input.date) {
-    return { ok: false, error: 'Date is required.' };
+    return { ok: false, errorKey: 'errors.dateRequired' };
   }
   return {
     ok: true,

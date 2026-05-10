@@ -7,6 +7,7 @@ import {
   validateExpense,
   type ExpenseFormInput,
 } from '../lib/validation';
+import { useTranslation, type TranslationKey } from '../i18n';
 import { AddExpenseHeader } from './AddExpenseHeader';
 import { AddExpenseFields } from './AddExpenseFields';
 
@@ -27,13 +28,18 @@ const blankForm = (): ExpenseFormInput => ({
   isBill: false,
 });
 
+type FormError =
+  | { kind: 'i18n'; key: TranslationKey }
+  | { kind: 'raw'; message: string };
+
 /** Orchestrates the add-expense flow: form state, toggle, validation, save.
  *  Header and field grid are presentational and live in their own files. */
 export function AddExpenseForm({ data, saving, onAdd }: Props) {
   const [form, setForm] = useState<ExpenseFormInput>(blankForm);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormError | null>(null);
   const [open, setOpen] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const suggestions = categorySuggestions(data.customCategories);
 
@@ -48,7 +54,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
 
     const result = validateExpense(form);
     if (!result.ok) {
-      setError(result.error);
+      setError({ kind: 'i18n', key: result.errorKey });
       return;
     }
 
@@ -59,8 +65,8 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
       });
       setForm(blankForm());
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Save failed';
-      setError(msg);
+      const message = e instanceof Error ? e.message : t('errors.saveFailed');
+      setError({ kind: 'raw', message });
     }
   };
 
@@ -81,6 +87,13 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
     setError(null);
   };
 
+  const errorMessage =
+    error == null
+      ? null
+      : error.kind === 'i18n'
+        ? t(error.key)
+        : error.message;
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -98,12 +111,12 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
             onChange={update}
           />
 
-          {error && (
+          {errorMessage && (
             <p
               role="alert"
               className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
             >
-              {error}
+              {errorMessage}
             </p>
           )}
 
@@ -114,14 +127,14 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
               disabled={saving}
               className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
-              Clear
+              {t('add.clear')}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="inline-flex h-11 items-center justify-center rounded-lg bg-brand-600 px-5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? 'Saving…' : 'Add expense'}
+              {saving ? t('add.saving') : t('add.submit')}
             </button>
           </div>
         </div>

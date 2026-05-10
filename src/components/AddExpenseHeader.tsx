@@ -1,3 +1,5 @@
+import { useTranslation } from '../i18n';
+
 interface Props {
   open: boolean;
   onToggle: () => void;
@@ -6,13 +8,14 @@ interface Props {
 /** Always-visible header for the collapsible add-expense form. Tapping
  *  anywhere on it toggles the field grid below. */
 export function AddExpenseHeader({ open, onToggle }: Props) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
       aria-controls="add-expense-fields"
-      aria-label={open ? 'Collapse add expense form' : 'Expand add expense form'}
+      aria-label={open ? t('add.collapse') : t('add.expand')}
       className="flex w-full items-center gap-2.5 text-left"
     >
       <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
@@ -28,10 +31,10 @@ export function AddExpenseHeader({ open, onToggle }: Props) {
         </svg>
       </span>
       <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-semibold text-slate-900">Add expense</h2>
-        <p className="text-xs text-slate-500">
-          Record a payment or quote — leave the payer blank to mark it as a bill.
-        </p>
+        <h2 className="text-sm font-semibold text-slate-900">
+          {t('add.title')}
+        </h2>
+        <p className="text-xs text-slate-500">{t('add.hint')}</p>
       </div>
     </button>
   );

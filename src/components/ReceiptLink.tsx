@@ -1,8 +1,11 @@
+import { useTranslation } from '../i18n';
+
 interface Props {
   filename: string;
 }
 
 export function ReceiptLink({ filename }: Props) {
+  const { t } = useTranslation();
   return (
     <span className="inline-flex items-center gap-1 text-xs text-slate-500">
       <svg
@@ -17,7 +20,7 @@ export function ReceiptLink({ filename }: Props) {
         <path d="M10 2v3h3" strokeLinejoin="round" />
       </svg>
       <span className="truncate" title={filename}>
-        receipt
+        {t('receiptLink.label')}
       </span>
     </span>
   );
