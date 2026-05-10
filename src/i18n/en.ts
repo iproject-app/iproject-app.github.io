@@ -72,6 +72,17 @@ export const en: Translations = {
   'summary.byPayer': 'By payer',
   'summary.unknownPayer': 'Unknown',
 
+  'contacts.title': 'Contacts',
+  'contacts.button': 'Contacts ({count})',
+  'contacts.add': 'Add contact',
+  'contacts.name': 'Name',
+  'contacts.role': 'Role',
+  'contacts.aliases': 'Aliases',
+  'contacts.aliasesHint':
+    'Comma-separated. AI uses these to normalize name variants on receipts.',
+  'contacts.empty': 'No contacts yet.',
+  'contacts.deleteContact': 'Delete contact',
+
   'filter.label': 'Filter',
   'filter.all': 'All',
   'filter.payments': 'Payments only',

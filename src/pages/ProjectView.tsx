@@ -5,6 +5,7 @@ import { totalOutstanding } from '../lib/bills';
 import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
 import { Banner } from '../components/Banner';
+import { ContactsModal } from '../components/ContactsModal';
 import { ExpenseDetailModal } from '../components/ExpenseDetailModal';
 import { ExpenseList } from '../components/ExpenseList';
 import {
@@ -22,6 +23,7 @@ export function ProjectView() {
   const { data, loading, error, saving, save } = useProjectData(slug);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<ExpenseFilter>('all');
+  const [contactsOpen, setContactsOpen] = useState(false);
 
   const entriesLabel = data
     ? t(
@@ -50,6 +52,15 @@ export function ProjectView() {
             {data?.name ?? slug}
           </h1>
           {data && outstanding > 0 && <OutstandingPill amount={outstanding} />}
+          {data && (
+            <button
+              type="button"
+              onClick={() => setContactsOpen(true)}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              {t('contacts.button', { count: (data.contacts ?? []).length })}
+            </button>
+          )}
         </div>
         {data && (
           <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -97,6 +108,16 @@ export function ProjectView() {
           saving={saving}
           onSave={save}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {data && (
+        <ContactsModal
+          open={contactsOpen}
+          data={data}
+          saving={saving}
+          onSave={save}
+          onClose={() => setContactsOpen(false)}
         />
       )}
     </div>
