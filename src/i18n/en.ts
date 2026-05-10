@@ -56,6 +56,18 @@ export const en: Translations = {
   'receipt.replaceHint': 'Drop another to replace.',
   'receipt.errorPrefix': "Couldn't process receipt:",
 
+  'billing.outstanding': 'Outstanding',
+  'billing.linkedToBill': 'Linked to bill',
+  'billing.linkToBill': 'Link to bill',
+  'billing.noLinkedBill': '— no linked bill —',
+  'billing.noBillsToLink':
+    'No open bills to link to.',
+
+  'filter.label': 'Filter',
+  'filter.all': 'All',
+  'filter.payments': 'Payments only',
+  'filter.bills': 'Bills only',
+
   'fields.date': 'Date',
   'fields.category': 'Category',
   'fields.payer': 'Payer',

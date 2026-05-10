@@ -56,6 +56,18 @@ export const pt: Translations = {
   'receipt.replaceHint': 'Solte outro para substituir.',
   'receipt.errorPrefix': 'Não foi possível processar o recibo:',
 
+  'billing.outstanding': 'A pagar',
+  'billing.linkedToBill': 'Vinculado ao orçamento',
+  'billing.linkToBill': 'Vincular ao orçamento',
+  'billing.noLinkedBill': '— sem orçamento vinculado —',
+  'billing.noBillsToLink':
+    'Nenhum orçamento em aberto para vincular.',
+
+  'filter.label': 'Filtro',
+  'filter.all': 'Todos',
+  'filter.payments': 'Apenas pagamentos',
+  'filter.bills': 'Apenas orçamentos',
+
   'fields.date': 'Data',
   'fields.category': 'Categoria',
   'fields.payer': 'Pagador',

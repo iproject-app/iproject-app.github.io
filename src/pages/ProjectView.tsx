@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
+import { totalOutstanding } from '../lib/bills';
 import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
 import { Banner } from '../components/Banner';
 import { ExpenseDetailModal } from '../components/ExpenseDetailModal';
 import { ExpenseList } from '../components/ExpenseList';
+import {
+  applyFilter,
+  FilterChips,
+  type ExpenseFilter,
+} from '../components/FilterChips';
+import { OutstandingPill } from '../components/OutstandingPill';
 import type { Expense } from '../lib/types';
 
 export function ProjectView() {
@@ -13,6 +20,7 @@ export function ProjectView() {
   const { t } = useTranslation();
   const { data, loading, error, saving, save } = useProjectData(slug);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [filter, setFilter] = useState<ExpenseFilter>('all');
 
   const entriesLabel = data
     ? t(
@@ -23,6 +31,9 @@ export function ProjectView() {
       )
     : '';
 
+  const outstanding = data ? totalOutstanding(data.expenses) : 0;
+  const visibleExpenses = data ? applyFilter(data.expenses, filter) : [];
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <Link
@@ -32,12 +43,15 @@ export function ProjectView() {
         {t('project.backToList')}
       </Link>
 
-      <header className="mt-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-          {data?.name ?? slug}
-        </h1>
+      <header className="mt-3 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            {data?.name ?? slug}
+          </h1>
+          {data && outstanding > 0 && <OutstandingPill amount={outstanding} />}
+        </div>
         {data && (
-          <p className="mt-1 text-xs uppercase tracking-wide text-slate-500">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
             {data.slug} · {entriesLabel}
           </p>
         )}
@@ -49,7 +63,11 @@ export function ProjectView() {
         </section>
       )}
 
-      <section className="mt-6">
+      <section className="mt-6 flex flex-col gap-4">
+        {!loading && !error && data && data.expenses.length > 0 && (
+          <FilterChips value={filter} onChange={setFilter} />
+        )}
+
         {loading && <Banner>{t('project.loading')}</Banner>}
         {!loading && error && (
           <Banner variant="error">
@@ -61,7 +79,7 @@ export function ProjectView() {
           <Banner>{t('project.noEntries')}</Banner>
         )}
         {!loading && !error && data && data.expenses.length > 0 && (
-          <ExpenseList expenses={data.expenses} onRowClick={setEditing} />
+          <ExpenseList expenses={visibleExpenses} onRowClick={setEditing} />
         )}
       </section>
 
