@@ -67,6 +67,11 @@ export const pt: Translations = {
   'billing.noBillsToLink':
     'Nenhum orçamento em aberto para vincular.',
 
+  'summary.totalSpent': 'Total gasto',
+  'summary.byCategory': 'Por categoria',
+  'summary.byPayer': 'Por pagador',
+  'summary.unknownPayer': 'Desconhecido',
+
   'filter.label': 'Filtro',
   'filter.all': 'Todos',
   'filter.payments': 'Apenas pagamentos',
