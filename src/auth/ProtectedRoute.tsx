@@ -15,6 +15,15 @@ interface Props {
 
 const Gate = ({ children }: Props) => <>{children}</>;
 
-export const ProtectedRoute = withAuthenticationRequired(Gate, {
+const Authenticated = withAuthenticationRequired(Gate, {
   onRedirecting: () => <Loading />,
 });
+
+/** Auth-gated route. In E2E mode (VITE_E2E=true) the auth check is bypassed
+ *  so Playwright can drive the UI without a real Auth0 session. */
+export function ProtectedRoute({ children }: Props) {
+  if (import.meta.env.VITE_E2E === 'true') {
+    return <>{children}</>;
+  }
+  return <Authenticated>{children}</Authenticated>;
+}

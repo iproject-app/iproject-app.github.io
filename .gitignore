@@ -3,6 +3,8 @@ dist
 dist-ssr
 .vite
 *.tsbuildinfo
+playwright-report/
+test-results/
 .env
 .env.local
 .env.*.local
