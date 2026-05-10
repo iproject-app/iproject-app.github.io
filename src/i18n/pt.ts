@@ -72,6 +72,17 @@ export const pt: Translations = {
   'summary.byPayer': 'Por pagador',
   'summary.unknownPayer': 'Desconhecido',
 
+  'contacts.title': 'Contatos',
+  'contacts.button': 'Contatos ({count})',
+  'contacts.add': 'Adicionar contato',
+  'contacts.name': 'Nome',
+  'contacts.role': 'Função',
+  'contacts.aliases': 'Apelidos',
+  'contacts.aliasesHint':
+    'Separados por vírgula. A IA usa para normalizar variações nos recibos.',
+  'contacts.empty': 'Nenhum contato ainda.',
+  'contacts.deleteContact': 'Excluir contato',
+
   'filter.label': 'Filtro',
   'filter.all': 'Todos',
   'filter.payments': 'Apenas pagamentos',

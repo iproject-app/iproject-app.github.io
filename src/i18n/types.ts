@@ -75,6 +75,16 @@ export interface Translations {
   'summary.byPayer': string;
   'summary.unknownPayer': string;
 
+  'contacts.title': string;
+  'contacts.button': string;
+  'contacts.add': string;
+  'contacts.name': string;
+  'contacts.role': string;
+  'contacts.aliases': string;
+  'contacts.aliasesHint': string;
+  'contacts.empty': string;
+  'contacts.deleteContact': string;
+
   'filter.label': string;
   'filter.all': string;
   'filter.payments': string;
