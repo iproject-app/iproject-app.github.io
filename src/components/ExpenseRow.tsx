@@ -6,12 +6,27 @@ import { ReceiptLink } from './ReceiptLink';
 
 interface Props {
   expense: Expense;
+  onClick?: (expense: Expense) => void;
 }
 
-export function ExpenseRow({ expense }: Props) {
+export function ExpenseRow({ expense, onClick }: Props) {
   const isBill = expense.kind === 'bill';
+  const interactive = Boolean(onClick);
+  const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+    if (!onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick(expense);
+    }
+  };
   return (
-    <tr className={isBill ? 'bg-amber-50/60' : undefined}>
+    <tr
+      onClick={onClick ? () => onClick(expense) : undefined}
+      onKeyDown={interactive ? handleKey : undefined}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      className={`${isBill ? 'bg-amber-50/60' : ''} ${interactive ? 'cursor-pointer hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500' : ''}`}
+    >
       <td className="whitespace-nowrap px-4 py-3 align-top text-slate-600">
         {formatDate(expense.date)}
       </td>

@@ -6,16 +6,20 @@ import { ReceiptLink } from './ReceiptLink';
 
 interface Props {
   expense: Expense;
+  onClick?: (expense: Expense) => void;
 }
 
-export function ExpenseCard({ expense }: Props) {
+export function ExpenseCard({ expense, onClick }: Props) {
   const isBill = expense.kind === 'bill';
-  return (
-    <article
-      className={`rounded-2xl border p-4 shadow-sm ${
-        isBill ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'
-      }`}
-    >
+  const baseClass = `rounded-2xl border p-4 shadow-sm text-left transition ${
+    isBill ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'
+  }`;
+  const interactiveClass = onClick
+    ? ' w-full hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
+    : '';
+
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-slate-500">{formatDate(expense.date)}</p>
@@ -40,6 +44,19 @@ export function ExpenseCard({ expense }: Props) {
         {isBill && <BillBadge />}
         {expense.receipt && <ReceiptLink filename={expense.receipt} />}
       </div>
-    </article>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick(expense)}
+        className={baseClass + interactiveClass}
+      >
+        {body}
+      </button>
+    );
+  }
+  return <article className={baseClass}>{body}</article>;
 }

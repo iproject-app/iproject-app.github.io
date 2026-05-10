@@ -1,14 +1,18 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
 import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
 import { Banner } from '../components/Banner';
+import { EditExpenseModal } from '../components/EditExpenseModal';
 import { ExpenseList } from '../components/ExpenseList';
+import type { Expense } from '../lib/types';
 
 export function ProjectView() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();
   const { data, loading, error, saving, save } = useProjectData(slug);
+  const [editing, setEditing] = useState<Expense | null>(null);
 
   const entriesLabel = data
     ? t(
@@ -57,9 +61,19 @@ export function ProjectView() {
           <Banner>{t('project.noEntries')}</Banner>
         )}
         {!loading && !error && data && data.expenses.length > 0 && (
-          <ExpenseList expenses={data.expenses} />
+          <ExpenseList expenses={data.expenses} onRowClick={setEditing} />
         )}
       </section>
+
+      {data && (
+        <EditExpenseModal
+          expense={editing}
+          data={data}
+          saving={saving}
+          onSave={save}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

@@ -28,6 +28,14 @@ export const en: Translations = {
   'add.saving': 'Saving…',
   'add.submit': 'Add expense',
 
+  'edit.title': 'Edit expense',
+  'edit.save': 'Save changes',
+  'edit.cancel': 'Cancel',
+  'edit.delete': 'Delete',
+  'edit.confirmDelete': 'Confirm delete',
+  'edit.deleting': 'Deleting…',
+  'edit.close': 'Close dialog',
+
   'fields.date': 'Date',
   'fields.category': 'Category',
   'fields.payer': 'Payer',
