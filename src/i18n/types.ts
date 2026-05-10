@@ -42,6 +42,12 @@ export interface Translations {
   'edit.deleting': string;
   'edit.close': string;
 
+  'detail.title': string;
+  'detail.edit': string;
+  'detail.payer': string;
+  'detail.payee': string;
+  'detail.dash': string;
+
   'fields.date': string;
   'fields.category': string;
   'fields.payer': string;

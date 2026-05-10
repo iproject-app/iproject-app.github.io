@@ -36,6 +36,12 @@ export const pt: Translations = {
   'edit.deleting': 'Excluindo…',
   'edit.close': 'Fechar diálogo',
 
+  'detail.title': 'Detalhes',
+  'detail.edit': 'Editar',
+  'detail.payer': 'Pagador',
+  'detail.payee': 'Beneficiário',
+  'detail.dash': '—',
+
   'fields.date': 'Data',
   'fields.category': 'Categoria',
   'fields.payer': 'Pagador',

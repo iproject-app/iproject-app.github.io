@@ -36,6 +36,12 @@ export const en: Translations = {
   'edit.deleting': 'Deleting…',
   'edit.close': 'Close dialog',
 
+  'detail.title': 'Details',
+  'detail.edit': 'Edit',
+  'detail.payer': 'Payer',
+  'detail.payee': 'Payee',
+  'detail.dash': '—',
+
   'fields.date': 'Date',
   'fields.category': 'Category',
   'fields.payer': 'Payer',

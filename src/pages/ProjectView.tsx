@@ -4,7 +4,7 @@ import { useProjectData } from '../lib/projectData';
 import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
 import { Banner } from '../components/Banner';
-import { EditExpenseModal } from '../components/EditExpenseModal';
+import { ExpenseDetailModal } from '../components/ExpenseDetailModal';
 import { ExpenseList } from '../components/ExpenseList';
 import type { Expense } from '../lib/types';
 
@@ -66,7 +66,7 @@ export function ProjectView() {
       </section>
 
       {data && (
-        <EditExpenseModal
+        <ExpenseDetailModal
           expense={editing}
           data={data}
           saving={saving}

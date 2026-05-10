@@ -85,9 +85,11 @@ test('list → detail → add → edit → delete', async ({ page }) => {
   expect(afterAdd).toHaveLength(2);
   expect(afterAdd.find((e) => e.payee === 'Pedro')?.amount).toBe(99.5);
 
-  // Edit the original Francisco row by content, not position (sort puts the
-  // newer Pedro row first now that the add happened).
+  // Click the original Francisco row by content (the new Pedro row is sorted
+  // first). Modal opens in *view* mode now — the pencil icon enters edit.
   await page.locator('tr', { hasText: 'Francisco' }).click();
+  await expect(page.getByRole('heading', { name: /^Details$/i })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('heading', { name: /edit expense/i })).toBeVisible();
   await page.getByLabel(/^Amount/).fill('750');
   await page.getByRole('button', { name: /save changes/i }).click();
@@ -97,7 +99,7 @@ test('list → detail → add → edit → delete', async ({ page }) => {
   const francisco = afterEdit.find((e) => e.payee === 'Francisco');
   expect(francisco?.amount).toBe(750);
 
-  // Delete the Pedro entry; two-stage confirm.
+  // Delete the Pedro entry from view mode; two-stage confirm.
   await page.locator('tr', { hasText: 'Pedro' }).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.getByRole('button', { name: /confirm delete/i }).click();
