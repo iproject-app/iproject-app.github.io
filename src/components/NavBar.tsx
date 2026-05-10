@@ -9,9 +9,9 @@ export function NavBar() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link to="/" className="flex min-h-11 items-center gap-2">
           <img
-            src="/logo-transparent.png"
-            alt=""
-            className="h-8 w-8 sm:h-9 sm:w-9"
+            src="/logo.png"
+            alt="iproject.app"
+            className="h-9 w-9 rounded-lg sm:h-10 sm:w-10"
           />
           <span className="text-base font-semibold tracking-tight text-white sm:text-lg">
             iproject<span className="text-brand-400">.app</span>
