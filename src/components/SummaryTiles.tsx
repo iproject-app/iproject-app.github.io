@@ -1,10 +1,22 @@
 import { useState } from 'react';
 import type { Expense } from '../lib/types';
-import { byCategory, byPayer, totalSpent } from '../lib/summaries';
+import {
+  byCategory,
+  byPayer,
+  paidOnCategory,
+  totalSpent,
+} from '../lib/summaries';
 import { totalOutstanding } from '../lib/bills';
 import { categoryClass } from '../lib/categories';
 import { formatMoney } from '../lib/format';
 import { useTranslation } from '../i18n';
+
+const LABOR_CATEGORY = 'Labor';
+
+/** Floating-point safety: two amounts are "equal" if they're within a cent. */
+const within = (a: number, b: number, eps = 0.01) => Math.abs(a - b) < eps;
+
+const overBudget = (a: number, b: number, eps = 0.01) => a - b > eps;
 
 interface Props {
   expenses: Expense[];
@@ -35,6 +47,22 @@ export function SummaryTiles({
 
   const hasHero = Boolean(plannedLabor) || spent > 0 || outstanding > 0;
 
+  // Contract vs. paid-on-labor status drives the tone of two tiles:
+  //   under-paid  → Contract turns rose (debt-like signal)
+  //   at-budget   → Contract turns emerald (settled)
+  //   over-budget → Contract emerald, Paid on Labor rose (overage warning)
+  const paidOnLabor = paidOnCategory(expenses, LABOR_CATEGORY);
+  const hasBudget = plannedLabor != null && plannedLabor > 0;
+  const isOverBudget = hasBudget && overBudget(paidOnLabor, plannedLabor!);
+  const contractTone: 'rose' | 'emerald' | 'brand' = !hasBudget
+    ? 'brand'
+    : within(paidOnLabor, plannedLabor!) || isOverBudget
+      ? 'emerald'
+      : 'rose';
+
+  const overBudgetTileClass =
+    'bg-rose-50 text-rose-800 ring-1 ring-rose-200';
+
   return (
     <section
       aria-label={t('summary.totalSpent')}
@@ -46,7 +74,7 @@ export function SummaryTiles({
             <HeroTile
               label={t('summary.contract')}
               value={formatMoney(plannedLabor)}
-              tone="brand"
+              tone={contractTone}
             />
           )}
           <HeroTile
@@ -70,19 +98,27 @@ export function SummaryTiles({
             {t('summary.byCategory')}
           </h3>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {cats.map((row) => (
-              <li
-                key={row.category}
-                className={`rounded-xl px-3 py-2.5 text-sm ${categoryClass(row.category)}`}
-              >
-                <p className="truncate text-xs font-medium uppercase tracking-wide opacity-80">
-                  {t('summary.paidOnLabel', { category: row.category })}
-                </p>
-                <p className="mt-0.5 text-base font-semibold">
-                  {formatMoney(row.total)}
-                </p>
-              </li>
-            ))}
+            {cats.map((row) => {
+              const isLaborOver =
+                isOverBudget &&
+                row.category.toLowerCase() === LABOR_CATEGORY.toLowerCase();
+              const tileClass = isLaborOver
+                ? overBudgetTileClass
+                : categoryClass(row.category);
+              return (
+                <li
+                  key={row.category}
+                  className={`rounded-xl px-3 py-2.5 text-sm ${tileClass}`}
+                >
+                  <p className="truncate text-xs font-medium uppercase tracking-wide opacity-80">
+                    {t('summary.paidOnLabel', { category: row.category })}
+                  </p>
+                  <p className="mt-0.5 text-base font-semibold">
+                    {formatMoney(row.total)}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -156,6 +192,16 @@ export function SummaryTiles({
   );
 }
 
+type HeroTone = 'brand' | 'neutral' | 'amber' | 'rose' | 'emerald';
+
+const HERO_TONE_CLASS: Record<HeroTone, string> = {
+  brand: 'border-brand-200 bg-brand-50 text-brand-900',
+  amber: 'border-amber-200 bg-amber-50 text-amber-900',
+  rose: 'border-rose-200 bg-rose-50 text-rose-900',
+  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  neutral: 'border-slate-200 bg-white text-slate-900',
+};
+
 function HeroTile({
   label,
   value,
@@ -163,16 +209,10 @@ function HeroTile({
 }: {
   label: string;
   value: string;
-  tone: 'brand' | 'neutral' | 'amber';
+  tone: HeroTone;
 }) {
-  const styles =
-    tone === 'brand'
-      ? 'border-brand-200 bg-brand-50 text-brand-900'
-      : tone === 'amber'
-        ? 'border-amber-200 bg-amber-50 text-amber-900'
-        : 'border-slate-200 bg-white text-slate-900';
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${styles}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm ${HERO_TONE_CLASS[tone]}`}>
       <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-1 text-2xl font-semibold sm:text-3xl">{value}</p>
     </div>
