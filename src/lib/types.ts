@@ -42,6 +42,17 @@ export interface ProjectData {
   expenses: Expense[];
   customCategories: string[];
   contacts: Contact[];
+  /** Labor budget — the contract amount to apportion across the schedule. */
   plannedLabor?: number;
+  /** Optional upfront / start-of-work payment, subtracted from the contract
+   *  amount before apportioning across weeks. */
+  contractUpfront?: number;
+  /** ISO date (YYYY-MM-DD) when the contract starts. Anchors the schedule. */
+  contractStartDate?: string;
+  /** Number of weekly checkpoints. */
+  contractWeeks?: number;
+  /** Keys of approved checkpoints (e.g. 'upfront', 'week_0', 'week_1'). The
+   *  schedule helpers in lib/schedule.ts produce the matching keys. */
+  approvedCheckpoints?: string[];
   claudeContext?: string;
 }

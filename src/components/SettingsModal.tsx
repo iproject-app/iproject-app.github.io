@@ -7,6 +7,12 @@ import {
   draftsToContacts,
   type ContactDraft,
 } from './ContactsManager';
+import {
+  applyContractDraft,
+  ContractEditor,
+  projectToContractDraft,
+  type ContractDraft,
+} from './ContractEditor';
 
 interface Props {
   open: boolean;
@@ -16,7 +22,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'contacts' | 'contracts' | 'plans';
+type Tab = 'contacts' | 'contract' | 'plans';
 
 interface TabDef {
   value: Tab;
@@ -25,7 +31,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { value: 'contacts', labelKey: 'settings.tabContacts' },
-  { value: 'contracts', labelKey: 'settings.tabContracts' },
+  { value: 'contract', labelKey: 'settings.tabContract' },
   { value: 'plans', labelKey: 'settings.tabPlans' },
 ];
 
@@ -40,15 +46,19 @@ export function SettingsModal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [tab, setTab] = useState<Tab>('contacts');
   const [contactDrafts, setContactDrafts] = useState<ContactDraft[]>([]);
+  const [contractDraft, setContractDraft] = useState<ContractDraft>(() =>
+    projectToContractDraft(data),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setContactDrafts((data.contacts ?? []).map(contactToDraft));
+      setContractDraft(projectToContractDraft(data));
       setTab('contacts');
       setError(null);
     }
-  }, [open, data.contacts]);
+  }, [open, data]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -61,10 +71,11 @@ export function SettingsModal({
     event.preventDefault();
     setError(null);
     try {
-      await onSave({
-        ...data,
-        contacts: draftsToContacts(contactDrafts),
-      });
+      const next = applyContractDraft(
+        { ...data, contacts: draftsToContacts(contactDrafts) },
+        contractDraft,
+      );
+      await onSave(next);
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('errors.saveFailed');
@@ -128,8 +139,12 @@ export function SettingsModal({
               saving={saving}
             />
           )}
-          {tab === 'contracts' && (
-            <Placeholder text={t('settings.placeholderContracts')} />
+          {tab === 'contract' && (
+            <ContractEditor
+              value={contractDraft}
+              onChange={setContractDraft}
+              saving={saving}
+            />
           )}
           {tab === 'plans' && (
             <Placeholder text={t('settings.placeholderPlans')} />

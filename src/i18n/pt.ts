@@ -88,12 +88,26 @@ export const pt: Translations = {
   'settings.title': 'Configurações do projeto',
   'settings.button': 'Configurações',
   'settings.tabContacts': 'Contatos',
-  'settings.tabContracts': 'Contratos',
+  'settings.tabContract': 'Contrato',
   'settings.tabPlans': 'Plantas',
-  'settings.placeholderContracts':
-    'Faça upload de contratos aqui quando o armazenamento estiver pronto. (Em breve.)',
   'settings.placeholderPlans':
     'Desenhos arquitetônicos, fotos de progresso, documentos de planejamento. (Em breve.)',
+
+  'contract.amount': 'Valor do contrato',
+  'contract.upfront': 'Pagamento inicial',
+  'contract.upfrontHint':
+    'Os pagamentos semanais usam (contrato − inicial).',
+  'contract.startDate': 'Data de início',
+  'contract.weeks': 'Número de semanas',
+  'contract.weeklyAmount': 'Valor semanal',
+  'contract.scheduleTitle': 'Cronograma de pagamentos',
+  'contract.upfrontRow': 'Inicial (começo do contrato)',
+  'contract.weekRow': 'Semana {n}',
+  'contract.approveAria': 'Aprovar {label}',
+  'contract.notConfigured':
+    'Defina o valor do contrato, a data de início e o número de semanas para gerar o cronograma.',
+  'contract.nextPayment': 'Próximo: {amount} em {date}',
+  'contract.allComplete': 'Todos os checkpoints aprovados.',
 
   'filter.label': 'Filtro',
   'filter.all': 'Todos',

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddExpenseForm } from './AddExpenseForm';
 import type { ProjectData } from '../lib/types';
@@ -258,8 +258,11 @@ describe('AddExpenseForm', () => {
       await user.click(
         screen.getByRole('button', { name: /expand add expense form/i }),
       );
-      // Type a custom payee, then drop a duplicate — the payee must survive.
-      await user.type(screen.getByLabelText(/^Payee/), 'Custom');
+      // Set the payee atomically (fireEvent, not user.type) so the value can't
+      // race with the upload's async state churn under React StrictMode.
+      fireEvent.change(screen.getByLabelText(/^Payee/), {
+        target: { value: 'Custom' },
+      });
       const input = container.querySelector(
         'input[type=file]',
       ) as HTMLInputElement;
