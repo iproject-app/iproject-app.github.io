@@ -177,20 +177,81 @@ Two drivers, one core. Hexagonal: store and AI clients are injected.
 SAM CLI also works (`sam local start-api`) but adds startup latency vs
 plain `python server.py`.
 
-## Cost (family-scale, ~100 calls/day)
+## Cost estimate (family-scale)
 
-| Service | Free tier | Estimated use | Cost |
-|---|---|---|---|
-| API GW HTTP API | 1M req/month free | ~3k/month | $0 |
-| Lambda | 1M req + 400k GB-sec/month free | ~200 GB-sec/month | $0 |
-| S3 storage | 5GB free first year | <1GB | $0 → ~$0.02/mo year 2+ |
-| S3 requests | $0.005 / 1000 PUT, $0.0004 / 1000 GET | minor | <$0.05/mo |
-| Data transfer | S3↔Lambda free same-region | n/a | $0 |
-| CloudWatch logs | 5GB ingestion + 5GB storage free | minor | $0 |
-| **Subtotal AWS** | | | **~$0–0.10/mo** |
-| Claude API | (already paying) | unchanged | unchanged |
+Assumptions: you + your wife + a contractor or two; roughly 50–100 API
+calls/day; ~100 MB of receipts in S3; Claude OCR runs a few dozen times a
+month.
 
-A 10x growth in usage stays in or near free tier indefinitely.
+### Service-by-service
+
+| Service | Free tier | Estimated use | Year 1 | Year 2+ |
+|---|---|---|---|---|
+| **Lambda** | 1M req + 400k GB-s/month **always free** | ~3k req, ~150 GB-s | $0 | $0 |
+| **API Gateway HTTP API** | 1M req for first 12 months | ~3k req | $0 | ~$0.003 |
+| **S3 storage** | 5 GB for first 12 months, then paid | ~100 MB | $0 | ~$0.002 |
+| **S3 PUT/GET requests** | 2k PUT + 20k GET for first 12 months | ~100 PUT, ~3k GET | $0 | <$0.01 |
+| **Data transfer out** | 100 GB/month for first 12 months | ~100 MB (receipt views) | $0 | ~$0.01 |
+| **CloudWatch Logs** | 5 GB ingest + 5 GB storage **always free** | ~3 MB | $0 | $0 |
+| **SSM Parameter Store** (SecureString for Anthropic key) | **always free** for standard params | 1 param | $0 | $0 |
+| **ACM** (TLS cert for `api.iproject.app`) | **always free** when bound to AWS services | 1 cert | $0 | $0 |
+| **DNS** (you keep Cloudflare) | n/a | n/a | $0 | $0 |
+| **Anthropic API** (existing) | n/a | unchanged | — | — |
+
+**Total AWS: ~$0/month year 1, ~$0.05/month year 2+.**
+
+### What to skip to keep it free
+
+- **Use SSM Parameter Store, not Secrets Manager.** Secrets Manager is
+  $0.40/secret/month always. SSM standard SecureString params are free up
+  to 10,000.
+- **Don't add CloudFront in front of API Gateway.** Responses are
+  personalized — no caching benefit. CloudFront is already implicit for
+  the React app via GitHub Pages.
+- **Don't use DynamoDB unless you actually need it.** S3-as-blob handles
+  the `data.json` model just fine. DynamoDB's free tier (25 GB + 25 RCU +
+  25 WCU) is generous but it's a different mental model and a migration
+  cost.
+
+### What might push you over the line
+
+- **Receipt size.** 4k phone photos are 4–6 MB each. 1,000 receipts ×
+  5 MB ≈ 5 GB → still in free tier year 1, then ~$0.12/month for storage
+  alone. Compress receipts before upload in the `process-receipt` Lambda
+  (downscale to long-edge 2000 px, JPEG q=80) to keep them around 500 KB.
+- **The contractor view from the brainstorm doc.** 10–20 contractors ×
+  10 projects × 50 receipts × 1 MB ≈ 5–10 GB plus more API traffic.
+  Probably $2–5/month after year 1.
+- **Lambda cold starts.** First call after ~15 min idle is 200–800 ms.
+  For sub-200 ms always, **Provisioned Concurrency** is ~$3.50/month per
+  warm instance. Not worth it for personal use; revisit if multi-tenant
+  ever feels slow.
+
+### Worst-case scenarios
+
+- **You + wife + a couple contractors, light use**: $0/month
+  indefinitely.
+- **Contractor view live, 10 active projects with bids and progress
+  photos**: $2–5/month.
+- **Public-facing tool, hundreds of users**: $20–50/month — but at that
+  scale the cost structure changes (CDN, possibly RDS instead of
+  S3-as-blob, request-batching).
+
+### Cost guardrails worth setting on day one
+
+These are all free, and they're cheap insurance:
+
+- **AWS Budgets alert at $5/month** — email if anything goes weird.
+- **CloudWatch alarm on Lambda 5xx > 5% over 5 min** — catches a runaway
+  before the bill does.
+- **Lambda reserved concurrency limit** (e.g. 10) — caps blast radius of
+  a misbehaving client or infinite loop.
+- **S3 lifecycle rule**: noncurrent object versions expire after 30 days
+  (versioning protects against accidents; lifecycle keeps storage costs
+  bounded).
+
+Practically: budget $1/month forever and it covers you with headroom for
+the foreseeable life of the family-scale app.
 
 ## Security considerations
 
