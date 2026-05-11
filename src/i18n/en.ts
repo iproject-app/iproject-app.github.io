@@ -84,6 +84,16 @@ export const en: Translations = {
     'Comma-separated. AI uses these to normalize name variants on receipts.',
   'contacts.empty': 'No contacts yet.',
   'contacts.deleteContact': 'Delete contact',
+  'contacts.normalizeButtonOne': 'Normalize 1 existing entry',
+  'contacts.normalizeButtonMany': 'Normalize {count} existing entries',
+  'contacts.normalizeAllUp':
+    'All existing entries already match the canonical names.',
+  'contacts.normalizeConfirm':
+    'Rewrite payer/payee in {count} existing expenses to the canonical names?',
+  'contacts.normalizeYes': 'Yes, normalize',
+  'contacts.normalizing': 'Normalizing…',
+  'contacts.normalizeHint':
+    'Applies your alias rules to expenses already saved on this project.',
 
   'settings.title': 'Project settings',
   'settings.button': 'Settings',

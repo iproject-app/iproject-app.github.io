@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Expense, ProjectData } from '../lib/types';
 import { categorySuggestions } from '../lib/categories';
+import { contactSuggestions, normalizeContactName } from '../lib/contacts';
 import { formatDate, formatMoney } from '../lib/format';
 import { findBillById, openBills } from '../lib/bills';
 import {
@@ -117,6 +118,8 @@ export function ExpenseDetailModal({
     const updated: Expense = {
       id: expense.id,
       ...result.expense,
+      payer: normalizeContactName(result.expense.payer, data.contacts ?? []),
+      payee: normalizeContactName(result.expense.payee, data.contacts ?? []),
       ...(extras.receipt ? { receipt: extras.receipt } : {}),
       ...(extras.fxRate != null ? { fxRate: extras.fxRate } : {}),
       ...(extras.fxRateDate ? { fxRateDate: extras.fxRateDate } : {}),
@@ -275,6 +278,7 @@ export function ExpenseDetailModal({
             <AddExpenseFields
               form={form}
               suggestions={categorySuggestions(data.customCategories)}
+              contactNames={contactSuggestions(data.contacts ?? [])}
               onChange={update}
             />
             {!form.isBill && (

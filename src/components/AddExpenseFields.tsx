@@ -7,6 +7,9 @@ import { Field, fieldInputClass } from './Field';
 interface Props {
   form: ExpenseFormInput;
   suggestions: readonly string[];
+  /** Names + aliases from the project's contacts list, used to autocomplete
+   *  the payer and payee inputs. */
+  contactNames?: readonly string[];
   firstFieldRef?: Ref<HTMLInputElement>;
   onChange: <K extends keyof ExpenseFormInput>(
     key: K,
@@ -19,6 +22,7 @@ interface Props {
 export function AddExpenseFields({
   form,
   suggestions,
+  contactNames,
   firstFieldRef,
   onChange,
 }: Props) {
@@ -55,6 +59,7 @@ export function AddExpenseFields({
       <Field label={t('fields.payer')} hint={t('fields.payerHint')}>
         <input
           type="text"
+          list="contact-suggestions"
           value={form.payer}
           onChange={(e) => onChange('payer', e.target.value)}
           className={fieldInputClass}
@@ -65,12 +70,21 @@ export function AddExpenseFields({
       <Field label={t('fields.payee')}>
         <input
           type="text"
+          list="contact-suggestions"
           value={form.payee}
           onChange={(e) => onChange('payee', e.target.value)}
           className={fieldInputClass}
           required
         />
       </Field>
+
+      {contactNames && contactNames.length > 0 && (
+        <datalist id="contact-suggestions">
+          {contactNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+      )}
 
       <Field label={t('fields.description')} className="sm:col-span-2">
         <input

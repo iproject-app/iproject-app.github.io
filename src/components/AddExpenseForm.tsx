@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { Expense, ProjectData } from '../lib/types';
 import { todayISO } from '../lib/format';
 import { categorySuggestions } from '../lib/categories';
+import { contactSuggestions, normalizeContactName } from '../lib/contacts';
 import {
   newExpenseId,
   validateExpense,
@@ -62,6 +63,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
   const processReceipt = useProcessReceipt();
 
   const suggestions = categorySuggestions(data.customCategories);
+  const contactNames = contactSuggestions(data.contacts ?? []);
 
   const update = <K extends keyof ExpenseFormInput>(
     key: K,
@@ -127,6 +129,8 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
     const expense: Expense = {
       id: newExpenseId(),
       ...result.expense,
+      payer: normalizeContactName(result.expense.payer, data.contacts ?? []),
+      payee: normalizeContactName(result.expense.payee, data.contacts ?? []),
       ...(extras.receipt ? { receipt: extras.receipt } : {}),
       ...(extras.fxRate != null ? { fxRate: extras.fxRate } : {}),
       ...(extras.fxRateDate ? { fxRateDate: extras.fxRateDate } : {}),
@@ -190,6 +194,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
           <AddExpenseFields
             form={form}
             suggestions={suggestions}
+            contactNames={contactNames}
             firstFieldRef={firstFieldRef}
             onChange={update}
           />
