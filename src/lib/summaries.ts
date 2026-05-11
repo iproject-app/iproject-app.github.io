@@ -45,6 +45,26 @@ export function byCategory(expenses: Expense[]): CategoryTotal[] {
 }
 
 /**
+ * Sum of non-bill spend in BRL for a single category (case-insensitive match).
+ * Useful for "Paid on Labor"-style headline tiles where we want the figure
+ * irrespective of how the category was capitalised on individual entries.
+ */
+export function paidOnCategory(
+  expenses: Expense[],
+  category: string,
+): number {
+  const target = category.trim().toLowerCase();
+  let total = 0;
+  for (const e of expenses) {
+    if (isBill(e)) continue;
+    if ((e.category || '').trim().toLowerCase() === target) {
+      total += toBRL(e);
+    }
+  }
+  return total;
+}
+
+/**
  * Per-payer totals across non-bill spend. Empty payers are bucketed under
  * an empty string; callers can format that as "—" or "Unknown".
  */

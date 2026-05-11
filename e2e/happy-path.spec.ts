@@ -185,8 +185,9 @@ test('outstanding pill + bill linkage', async ({ page }) => {
   await page.goto('/projects/back-wall');
 
   // The single open bill drives the Outstanding pill in the page header.
-  // Scope to the header so we don't pick up the same total in the bill row.
-  await expect(page.getByText(/Outstanding/i)).toBeVisible();
+  // "Outstanding" now also shows up in the summary tile — scope both
+  // assertions to the page header so we test the pill specifically.
+  await expect(page.locator('header').getByText(/Outstanding/i)).toBeVisible();
   await expect(page.locator('header').getByText(/1\.000,00/)).toBeVisible();
 
   // Add a payment that links to the bill.

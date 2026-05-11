@@ -71,8 +71,10 @@ export interface Translations {
   'billing.noBillsToLink': string;
 
   'summary.totalSpent': string;
+  'summary.contract': string;
   'summary.byCategory': string;
   'summary.byPayer': string;
+  'summary.paidOnLabel': string;
   'summary.unknownPayer': string;
 
   'contacts.title': string;
@@ -85,10 +87,23 @@ export interface Translations {
   'contacts.empty': string;
   'contacts.deleteContact': string;
 
+  'settings.title': string;
+  'settings.button': string;
+  'settings.tabContacts': string;
+  'settings.tabContracts': string;
+  'settings.tabPlans': string;
+  'settings.placeholderContracts': string;
+  'settings.placeholderPlans': string;
+
   'filter.label': string;
   'filter.all': string;
   'filter.payments': string;
   'filter.bills': string;
+  'filter.payerLabel': string;
+  'filter.categoryLabel': string;
+  'filter.allPayers': string;
+  'filter.allCategories': string;
+  'filter.clear': string;
 
   'fields.date': string;
   'fields.category': string;
