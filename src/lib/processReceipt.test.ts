@@ -110,10 +110,81 @@ describe('useProcessReceipt', () => {
     await expect(result.current('back-wall', makeFile())).rejects.toThrow(/400/);
   });
 
+  it('treats a success response with duplicate=null as NOT a duplicate', async () => {
+    server.use(
+      http.post('*/api/process-receipt', () =>
+        HttpResponse.json({
+          fields: { date: '2026-05-11', amount: 200 },
+          filename: 'canonical.jpg',
+          duplicate: null,
+        }),
+      ),
+    );
+
+    const { result } = renderHook(() => useProcessReceipt());
+    const res = await result.current('back-wall', makeFile());
+
+    expect(isDuplicateResponse(res)).toBe(false);
+    expect('fields' in res).toBe(true);
+  });
+
+  it('treats a same-fields hint inside a success response as NOT a duplicate', async () => {
+    server.use(
+      http.post('*/api/process-receipt', () =>
+        HttpResponse.json({
+          fields: { date: '2026-05-11', amount: 200 },
+          filename: 'canonical.jpg',
+          duplicate: {
+            type: 'same-fields',
+            expense: {
+              id: 'seed-01',
+              date: '2026-05-11',
+              category: 'Materials',
+              payer: '',
+              payee: 'X',
+              description: '',
+              amount: 200,
+            },
+          },
+        }),
+      ),
+    );
+
+    const { result } = renderHook(() => useProcessReceipt());
+    const res = await result.current('back-wall', makeFile());
+
+    expect(isDuplicateResponse(res)).toBe(false);
+    expect('fields' in res).toBe(true);
+    if ('fields' in res) {
+      expect(res.filename).toBe('canonical.jpg');
+    }
+  });
+
   it('discriminates ok vs duplicate via isDuplicateResponse', () => {
     const ok: ProcessReceiptResponse = {
       fields: {},
       filename: 'a.jpg',
+    };
+    const okWithNullDup: ProcessReceiptResponse = {
+      fields: {},
+      filename: 'a.jpg',
+      duplicate: null,
+    };
+    const okWithSameFieldsHint: ProcessReceiptResponse = {
+      fields: {},
+      filename: 'a.jpg',
+      duplicate: {
+        type: 'same-fields',
+        expense: {
+          id: 'x',
+          date: '2026-01-01',
+          category: 'Other',
+          payer: '',
+          payee: 'p',
+          description: '',
+          amount: 1,
+        },
+      },
     };
     const dup: ProcessReceiptResponse = {
       duplicate: {
@@ -131,6 +202,8 @@ describe('useProcessReceipt', () => {
       },
     };
     expect(isDuplicateResponse(ok)).toBe(false);
+    expect(isDuplicateResponse(okWithNullDup)).toBe(false);
+    expect(isDuplicateResponse(okWithSameFieldsHint)).toBe(false);
     expect(isDuplicateResponse(dup)).toBe(true);
   });
 });

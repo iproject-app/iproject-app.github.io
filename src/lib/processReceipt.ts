@@ -19,25 +19,55 @@ export interface ExtractedExpenseFields {
   linkedTo?: string | null;
 }
 
+/** Informational duplicate hint the server attaches when extracted fields
+ *  match an existing expense. Not blocking — `fields` + `filename` are still
+ *  populated and the client should proceed normally. */
+export interface SameFieldsDuplicate {
+  type: 'same-fields';
+  expense: Expense;
+}
+
+/** Blocking duplicate path the server uses when the exact-bytes file is
+ *  already attached to an existing expense. No `fields` / top-level
+ *  `filename` is returned in this case; the caller should reuse the existing
+ *  canonical filename instead of overwriting form values. */
+export interface ExactFileDuplicate {
+  type: 'exact-file';
+  filename: string;
+  expense: Expense;
+}
+
 export interface ProcessReceiptOk {
   fields: ExtractedExpenseFields;
   filename: string;
+  /** Optional informational hint; never blocks. May also be `null`. */
+  duplicate?: SameFieldsDuplicate | null;
+  model?: string;
+  usage?: unknown;
 }
 
-export interface ProcessReceiptDuplicate {
-  duplicate: {
-    type: 'exact-file';
-    filename: string;
-    expense: Expense;
-  };
+export interface ProcessReceiptExactFileDuplicate {
+  duplicate: ExactFileDuplicate;
 }
 
-export type ProcessReceiptResponse = ProcessReceiptOk | ProcessReceiptDuplicate;
+export type ProcessReceiptResponse =
+  | ProcessReceiptOk
+  | ProcessReceiptExactFileDuplicate;
 
+/** Discriminate the exact-file (blocking) path from the regular success path.
+ *  The server signals it by returning a `duplicate` object with
+ *  `type === 'exact-file'` and *no* top-level `filename`. */
 export function isDuplicateResponse(
   res: ProcessReceiptResponse,
-): res is ProcessReceiptDuplicate {
-  return 'duplicate' in res;
+): res is ProcessReceiptExactFileDuplicate {
+  if ('filename' in res && typeof res.filename === 'string') return false;
+  const dup = (res as ProcessReceiptExactFileDuplicate).duplicate;
+  return (
+    dup != null &&
+    typeof dup === 'object' &&
+    'type' in dup &&
+    dup.type === 'exact-file'
+  );
 }
 
 async function fileToBase64(file: File): Promise<string> {
