@@ -3,41 +3,73 @@ import { useApi } from './api';
 import type { Expense, ExpenseKind } from './types';
 
 /** Subset of fields that the AI extraction endpoint may return. Every field
- *  is optional — Claude may legitimately omit anything it can't read. */
+ *  is optional and may also come back explicitly as `null` (Claude or the
+ *  server can decide a field is unknown rather than omit it). Consumers
+ *  should treat `null` and `undefined` the same way — usually via `??`. */
 export interface ExtractedExpenseFields {
-  date?: string;
-  amount?: number;
-  payer?: string;
-  payee?: string;
-  description?: string;
-  category?: string;
-  currency?: string;
-  kind?: ExpenseKind;
-  fxRate?: number;
-  fxRateDate?: string;
-  fxRateSource?: string;
+  date?: string | null;
+  amount?: number | null;
+  payer?: string | null;
+  payee?: string | null;
+  description?: string | null;
+  category?: string | null;
+  currency?: string | null;
+  kind?: ExpenseKind | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
+  fxRateSource?: string | null;
   linkedTo?: string | null;
+}
+
+/** Informational duplicate hint the server attaches when extracted fields
+ *  match an existing expense. Not blocking — `fields` + `filename` are still
+ *  populated and the client should proceed normally. */
+export interface SameFieldsDuplicate {
+  type: 'same-fields';
+  expense: Expense;
+}
+
+/** Blocking duplicate path the server uses when the exact-bytes file is
+ *  already attached to an existing expense. No `fields` / top-level
+ *  `filename` is returned in this case; the caller should reuse the existing
+ *  canonical filename instead of overwriting form values. */
+export interface ExactFileDuplicate {
+  type: 'exact-file';
+  filename: string;
+  expense: Expense;
 }
 
 export interface ProcessReceiptOk {
   fields: ExtractedExpenseFields;
   filename: string;
+  /** Optional informational hint; never blocks. May also be `null`. */
+  duplicate?: SameFieldsDuplicate | null;
+  model?: string;
+  usage?: unknown;
 }
 
-export interface ProcessReceiptDuplicate {
-  duplicate: {
-    type: 'exact-file';
-    filename: string;
-    expense: Expense;
-  };
+export interface ProcessReceiptExactFileDuplicate {
+  duplicate: ExactFileDuplicate;
 }
 
-export type ProcessReceiptResponse = ProcessReceiptOk | ProcessReceiptDuplicate;
+export type ProcessReceiptResponse =
+  | ProcessReceiptOk
+  | ProcessReceiptExactFileDuplicate;
 
+/** Discriminate the exact-file (blocking) path from the regular success path.
+ *  The server signals it by returning a `duplicate` object with
+ *  `type === 'exact-file'` and *no* top-level `filename`. */
 export function isDuplicateResponse(
   res: ProcessReceiptResponse,
-): res is ProcessReceiptDuplicate {
-  return 'duplicate' in res;
+): res is ProcessReceiptExactFileDuplicate {
+  if ('filename' in res && typeof res.filename === 'string') return false;
+  const dup = (res as ProcessReceiptExactFileDuplicate).duplicate;
+  return (
+    dup != null &&
+    typeof dup === 'object' &&
+    'type' in dup &&
+    dup.type === 'exact-file'
+  );
 }
 
 async function fileToBase64(file: File): Promise<string> {
