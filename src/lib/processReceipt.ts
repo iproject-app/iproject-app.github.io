@@ -3,19 +3,21 @@ import { useApi } from './api';
 import type { Expense, ExpenseKind } from './types';
 
 /** Subset of fields that the AI extraction endpoint may return. Every field
- *  is optional — Claude may legitimately omit anything it can't read. */
+ *  is optional and may also come back explicitly as `null` (Claude or the
+ *  server can decide a field is unknown rather than omit it). Consumers
+ *  should treat `null` and `undefined` the same way — usually via `??`. */
 export interface ExtractedExpenseFields {
-  date?: string;
-  amount?: number;
-  payer?: string;
-  payee?: string;
-  description?: string;
-  category?: string;
-  currency?: string;
-  kind?: ExpenseKind;
-  fxRate?: number;
-  fxRateDate?: string;
-  fxRateSource?: string;
+  date?: string | null;
+  amount?: number | null;
+  payer?: string | null;
+  payee?: string | null;
+  description?: string | null;
+  category?: string | null;
+  currency?: string | null;
+  kind?: ExpenseKind | null;
+  fxRate?: number | null;
+  fxRateDate?: string | null;
+  fxRateSource?: string | null;
   linkedTo?: string | null;
 }
 

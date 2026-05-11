@@ -102,9 +102,9 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
       applyExtractedFields(res.fields);
       setExtras({
         receipt: res.filename,
-        fxRate: res.fields.fxRate,
-        fxRateDate: res.fields.fxRateDate,
-        fxRateSource: res.fields.fxRateSource,
+        fxRate: res.fields.fxRate ?? undefined,
+        fxRateDate: res.fields.fxRateDate ?? undefined,
+        fxRateSource: res.fields.fxRateSource ?? undefined,
         linkedTo: res.fields.linkedTo ?? undefined,
       });
       setReceiptState({ kind: 'attached', filename: res.filename });
