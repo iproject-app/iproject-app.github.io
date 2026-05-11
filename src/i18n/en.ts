@@ -68,8 +68,10 @@ export const en: Translations = {
     'No open bills to link to.',
 
   'summary.totalSpent': 'Total spent',
+  'summary.contract': 'Contract',
   'summary.byCategory': 'By category',
   'summary.byPayer': 'By payer',
+  'summary.paidOnLabel': 'Paid on {category}',
   'summary.unknownPayer': 'Unknown',
 
   'contacts.title': 'Contacts',
@@ -83,10 +85,25 @@ export const en: Translations = {
   'contacts.empty': 'No contacts yet.',
   'contacts.deleteContact': 'Delete contact',
 
+  'settings.title': 'Project settings',
+  'settings.button': 'Settings',
+  'settings.tabContacts': 'Contacts',
+  'settings.tabContracts': 'Contracts',
+  'settings.tabPlans': 'Plans',
+  'settings.placeholderContracts':
+    "Upload contract documents here once we wire storage in. (Coming soon.)",
+  'settings.placeholderPlans':
+    'Architectural drawings, photos of progress, planning documents. (Coming soon.)',
+
   'filter.label': 'Filter',
   'filter.all': 'All',
   'filter.payments': 'Payments only',
   'filter.bills': 'Bills only',
+  'filter.payerLabel': 'Payer',
+  'filter.categoryLabel': 'Category',
+  'filter.allPayers': 'All payers',
+  'filter.allCategories': 'All categories',
+  'filter.clear': 'Clear filters',
 
   'fields.date': 'Date',
   'fields.category': 'Category',

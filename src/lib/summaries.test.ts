@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { byCategory, byPayer, totalSpent } from './summaries';
+import {
+  byCategory,
+  byPayer,
+  paidOnCategory,
+  totalSpent,
+} from './summaries';
 import type { Expense } from './types';
 
 const expense = (over: Partial<Expense> = {}): Expense => ({
@@ -81,6 +86,37 @@ describe('byCategory', () => {
       expense({ category: 'Materials', amount: 100 }),
     ];
     expect(byCategory(list)).toEqual([{ category: 'Materials', total: 100 }]);
+  });
+});
+
+describe('paidOnCategory', () => {
+  it('sums non-bill spend in the given category (case-insensitive)', () => {
+    const list: Expense[] = [
+      expense({ category: 'Labor', amount: 100 }),
+      expense({ category: 'labor', amount: 50 }),
+      expense({ category: 'Materials', amount: 999 }),
+    ];
+    expect(paidOnCategory(list, 'Labor')).toBe(150);
+    expect(paidOnCategory(list, 'labor')).toBe(150);
+  });
+
+  it('excludes bills', () => {
+    const list: Expense[] = [
+      expense({ kind: 'bill', category: 'Labor', amount: 1000 }),
+      expense({ category: 'Labor', amount: 100 }),
+    ];
+    expect(paidOnCategory(list, 'Labor')).toBe(100);
+  });
+
+  it('converts non-BRL via fxRate', () => {
+    const list: Expense[] = [
+      expense({ category: 'Materials', amount: 100, currency: 'USD', fxRate: 5 }),
+    ];
+    expect(paidOnCategory(list, 'Materials')).toBe(500);
+  });
+
+  it('returns 0 for a category with no matching expenses', () => {
+    expect(paidOnCategory([expense()], 'Aviation')).toBe(0);
   });
 });
 

@@ -68,8 +68,10 @@ export const pt: Translations = {
     'Nenhum orçamento em aberto para vincular.',
 
   'summary.totalSpent': 'Total gasto',
+  'summary.contract': 'Contrato',
   'summary.byCategory': 'Por categoria',
   'summary.byPayer': 'Por pagador',
+  'summary.paidOnLabel': 'Pago em {category}',
   'summary.unknownPayer': 'Desconhecido',
 
   'contacts.title': 'Contatos',
@@ -83,10 +85,25 @@ export const pt: Translations = {
   'contacts.empty': 'Nenhum contato ainda.',
   'contacts.deleteContact': 'Excluir contato',
 
+  'settings.title': 'Configurações do projeto',
+  'settings.button': 'Configurações',
+  'settings.tabContacts': 'Contatos',
+  'settings.tabContracts': 'Contratos',
+  'settings.tabPlans': 'Plantas',
+  'settings.placeholderContracts':
+    'Faça upload de contratos aqui quando o armazenamento estiver pronto. (Em breve.)',
+  'settings.placeholderPlans':
+    'Desenhos arquitetônicos, fotos de progresso, documentos de planejamento. (Em breve.)',
+
   'filter.label': 'Filtro',
   'filter.all': 'Todos',
   'filter.payments': 'Apenas pagamentos',
   'filter.bills': 'Apenas orçamentos',
+  'filter.payerLabel': 'Pagador',
+  'filter.categoryLabel': 'Categoria',
+  'filter.allPayers': 'Todos os pagadores',
+  'filter.allCategories': 'Todas as categorias',
+  'filter.clear': 'Limpar filtros',
 
   'fields.date': 'Data',
   'fields.category': 'Categoria',
