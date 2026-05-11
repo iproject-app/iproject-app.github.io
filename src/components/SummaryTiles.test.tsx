@@ -117,6 +117,65 @@ describe('SummaryTiles', () => {
     expect(onPayerSelect).toHaveBeenCalledWith('');
   });
 
+  describe('Contract vs paid-on-labor color logic', () => {
+    it('Contract tile is rose-tinted when labor is under-paid', () => {
+      renderWithI18n(
+        <SummaryTiles
+          expenses={[expense({ category: 'Labor', amount: 1000 })]}
+          plannedLabor={5000}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      expect(tile.className).toMatch(/rose/);
+    });
+
+    it('Contract tile is emerald-tinted when labor exactly meets the budget', () => {
+      renderWithI18n(
+        <SummaryTiles
+          expenses={[expense({ category: 'Labor', amount: 5000 })]}
+          plannedLabor={5000}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      expect(tile.className).toMatch(/emerald/);
+    });
+
+    it('Contract tile stays emerald when labor overshoots — but Paid on Labor turns rose', () => {
+      renderWithI18n(
+        <SummaryTiles
+          expenses={[expense({ category: 'Labor', amount: 6000 })]}
+          plannedLabor={5000}
+        />,
+      );
+      expect(
+        screen.getByText(/Contract/i).closest('div')!.className,
+      ).toMatch(/emerald/);
+      // The Paid on Labor tile (in the by-category grid) gets the over-budget look.
+      const laborTile = screen.getByText('Paid on Labor').closest('li')!;
+      expect(laborTile.className).toMatch(/rose/);
+    });
+
+    it('Paid on Labor uses the default category palette when under budget', () => {
+      renderWithI18n(
+        <SummaryTiles
+          expenses={[expense({ category: 'Labor', amount: 1000 })]}
+          plannedLabor={5000}
+        />,
+      );
+      const laborTile = screen.getByText('Paid on Labor').closest('li')!;
+      expect(laborTile.className).toMatch(/blue/); // brand-ish, from categoryClass
+      expect(laborTile.className).not.toMatch(/rose/);
+    });
+
+    it('Contract tile uses the brand tone when plannedLabor is unset', () => {
+      renderWithI18n(
+        <SummaryTiles expenses={[expense({ category: 'Labor', amount: 1000 })]} />,
+      );
+      // Without plannedLabor the Contract tile doesn't render at all.
+      expect(screen.queryByText(/Contract/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('localizes the headings in Portuguese', () => {
     renderWithI18n(
       <SummaryTiles expenses={[expense()]} plannedLabor={1000} />,
