@@ -90,10 +90,23 @@ export interface Translations {
   'settings.title': string;
   'settings.button': string;
   'settings.tabContacts': string;
-  'settings.tabContracts': string;
+  'settings.tabContract': string;
   'settings.tabPlans': string;
-  'settings.placeholderContracts': string;
   'settings.placeholderPlans': string;
+
+  'contract.amount': string;
+  'contract.upfront': string;
+  'contract.upfrontHint': string;
+  'contract.startDate': string;
+  'contract.weeks': string;
+  'contract.weeklyAmount': string;
+  'contract.scheduleTitle': string;
+  'contract.upfrontRow': string;
+  'contract.weekRow': string;
+  'contract.approveAria': string;
+  'contract.notConfigured': string;
+  'contract.nextPayment': string;
+  'contract.allComplete': string;
 
   'filter.label': string;
   'filter.all': string;

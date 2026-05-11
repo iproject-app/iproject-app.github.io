@@ -8,7 +8,9 @@ import {
 } from '../lib/summaries';
 import { totalOutstanding } from '../lib/bills';
 import { categoryClass } from '../lib/categories';
-import { formatMoney } from '../lib/format';
+import { formatDate, formatMoney } from '../lib/format';
+import { nextPayment, schedule } from '../lib/schedule';
+import type { ProjectData } from '../lib/types';
 import { useTranslation } from '../i18n';
 
 const LABOR_CATEGORY = 'Labor';
@@ -22,6 +24,9 @@ interface Props {
   expenses: Expense[];
   /** Project's labor budget (plannedLabor). Shown as the "Contract" tile. */
   plannedLabor?: number;
+  /** When set, the Contract tile gets a small "Next: <amount> on <date>"
+   *  subline pulled from the schedule helpers. */
+  contractData?: ProjectData;
   /** When set, the by-payer row matching this string renders selected; clicks
    *  toggle the selection via `onPayerSelect`. Use the literal '__unknown' for
    *  the empty-payer bucket to mirror FilterBar's encoding. */
@@ -32,6 +37,7 @@ interface Props {
 export function SummaryTiles({
   expenses,
   plannedLabor,
+  contractData,
   selectedPayer,
   onPayerSelect,
 }: Props) {
@@ -75,6 +81,7 @@ export function SummaryTiles({
               label={t('summary.contract')}
               value={formatMoney(plannedLabor)}
               tone={contractTone}
+              footer={contractData ? renderNextPayment(contractData, t) : null}
             />
           )}
           <HeroTile
@@ -206,16 +213,37 @@ function HeroTile({
   label,
   value,
   tone,
+  footer,
 }: {
   label: string;
   value: string;
   tone: HeroTone;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className={`rounded-2xl border p-4 shadow-sm ${HERO_TONE_CLASS[tone]}`}>
       <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-1 text-2xl font-semibold sm:text-3xl">{value}</p>
+      {footer && <div className="mt-2 text-xs opacity-80">{footer}</div>}
     </div>
+  );
+}
+
+function renderNextPayment(
+  data: ProjectData,
+  t: (key: 'contract.nextPayment' | 'contract.allComplete',
+    vars?: Record<string, string | number>) => string,
+): React.ReactNode {
+  if (schedule(data).length === 0) return null;
+  const next = nextPayment(data);
+  if (!next) return <span>{t('contract.allComplete')}</span>;
+  return (
+    <span>
+      {t('contract.nextPayment', {
+        amount: formatMoney(next.amount),
+        date: formatDate(next.date),
+      })}
+    </span>
   );
 }
 

@@ -62,10 +62,42 @@ describe('SettingsModal', () => {
       />,
     );
 
-    await user.click(screen.getByRole('tab', { name: /Contracts/ }));
+    await user.click(screen.getByRole('tab', { name: /^Contract$/ }));
 
-    expect(screen.getByText(/upload contract documents here/i)).toBeVisible();
+    expect(screen.getByLabelText(/contract amount/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Number of weeks/i)).toBeInTheDocument();
     expect(screen.queryByText(/no contacts yet/i)).not.toBeInTheDocument();
+  });
+
+  it('saves contract fields entered in the Contract tab', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={onSave}
+        onClose={onClose}
+      />,
+    );
+
+    await user.click(screen.getByRole('tab', { name: /^Contract$/ }));
+    await user.type(screen.getByLabelText(/contract amount/i), '15800');
+    await user.type(screen.getByLabelText(/upfront payment/i), '2000');
+    await user.clear(screen.getByLabelText(/start date/i));
+    await user.type(screen.getByLabelText(/start date/i), '2026-05-01');
+    await user.type(screen.getByLabelText(/^Number of weeks/i), '3');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const next = onSave.mock.calls[0][0];
+    expect(next.plannedLabor).toBe(15800);
+    expect(next.contractUpfront).toBe(2000);
+    expect(next.contractStartDate).toBe('2026-05-01');
+    expect(next.contractWeeks).toBe(3);
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('switches to the Plans tab and shows the placeholder', async () => {
@@ -148,7 +180,7 @@ describe('SettingsModal', () => {
       screen.getByRole('heading', { name: /configurações do projeto/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Contatos/ })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Contratos/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Contrato$/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Plantas/ })).toBeInTheDocument();
   });
 

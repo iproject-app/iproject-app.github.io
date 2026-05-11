@@ -108,6 +108,7 @@ export function ProjectView() {
           <SummaryTiles
             expenses={data.expenses}
             plannedLabor={data.plannedLabor}
+            contractData={data}
             selectedPayer={filters.payer}
             onPayerSelect={setPayerFilter}
           />

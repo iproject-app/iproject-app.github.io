@@ -88,12 +88,26 @@ export const en: Translations = {
   'settings.title': 'Project settings',
   'settings.button': 'Settings',
   'settings.tabContacts': 'Contacts',
-  'settings.tabContracts': 'Contracts',
+  'settings.tabContract': 'Contract',
   'settings.tabPlans': 'Plans',
-  'settings.placeholderContracts':
-    "Upload contract documents here once we wire storage in. (Coming soon.)",
   'settings.placeholderPlans':
     'Architectural drawings, photos of progress, planning documents. (Coming soon.)',
+
+  'contract.amount': 'Contract amount',
+  'contract.upfront': 'Upfront payment',
+  'contract.upfrontHint':
+    'Apportioned weekly payments use (contract − upfront).',
+  'contract.startDate': 'Start date',
+  'contract.weeks': 'Number of weeks',
+  'contract.weeklyAmount': 'Weekly amount',
+  'contract.scheduleTitle': 'Payment schedule',
+  'contract.upfrontRow': 'Upfront (start of contract)',
+  'contract.weekRow': 'Week {n}',
+  'contract.approveAria': 'Approve {label}',
+  'contract.notConfigured':
+    'Set the contract amount, start date, and number of weeks to build the schedule.',
+  'contract.nextPayment': 'Next: {amount} on {date}',
+  'contract.allComplete': 'All checkpoints approved.',
 
   'filter.label': 'Filter',
   'filter.all': 'All',
