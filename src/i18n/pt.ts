@@ -84,6 +84,16 @@ export const pt: Translations = {
     'Separados por vírgula. A IA usa para normalizar variações nos recibos.',
   'contacts.empty': 'Nenhum contato ainda.',
   'contacts.deleteContact': 'Excluir contato',
+  'contacts.normalizeButtonOne': 'Normalizar 1 lançamento existente',
+  'contacts.normalizeButtonMany': 'Normalizar {count} lançamentos existentes',
+  'contacts.normalizeAllUp':
+    'Todos os lançamentos existentes já têm os nomes canônicos.',
+  'contacts.normalizeConfirm':
+    'Reescrever pagador/beneficiário em {count} lançamentos para os nomes canônicos?',
+  'contacts.normalizeYes': 'Sim, normalizar',
+  'contacts.normalizing': 'Normalizando…',
+  'contacts.normalizeHint':
+    'Aplica suas regras de apelidos aos lançamentos já salvos deste projeto.',
 
   'settings.title': 'Configurações do projeto',
   'settings.button': 'Configurações',

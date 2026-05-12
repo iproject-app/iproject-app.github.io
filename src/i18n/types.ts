@@ -86,6 +86,13 @@ export interface Translations {
   'contacts.aliasesHint': string;
   'contacts.empty': string;
   'contacts.deleteContact': string;
+  'contacts.normalizeButtonOne': string;
+  'contacts.normalizeButtonMany': string;
+  'contacts.normalizeAllUp': string;
+  'contacts.normalizeConfirm': string;
+  'contacts.normalizeYes': string;
+  'contacts.normalizing': string;
+  'contacts.normalizeHint': string;
 
   'settings.title': string;
   'settings.button': string;

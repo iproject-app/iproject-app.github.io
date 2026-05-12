@@ -13,6 +13,7 @@ import {
   projectToContractDraft,
   type ContractDraft,
 } from './ContractEditor';
+import { NormalizePanel } from './NormalizePanel';
 
 interface Props {
   open: boolean;
@@ -133,11 +134,25 @@ export function SettingsModal({
 
         <div role="tabpanel">
           {tab === 'contacts' && (
-            <ContactsManager
-              value={contactDrafts}
-              onChange={setContactDrafts}
-              saving={saving}
-            />
+            <div className="flex flex-col gap-4">
+              <ContactsManager
+                value={contactDrafts}
+                onChange={setContactDrafts}
+                saving={saving}
+              />
+              <NormalizePanel
+                data={data}
+                liveContacts={draftsToContacts(contactDrafts)}
+                saving={saving}
+                onApply={async (next) => {
+                  // The retro-normalize path saves expenses + the current
+                  // contact drafts; close the modal once the round trip
+                  // completes so the user sees the rewritten list.
+                  await onSave(next);
+                  onClose();
+                }}
+              />
+            </div>
           )}
           {tab === 'contract' && (
             <ContractEditor
