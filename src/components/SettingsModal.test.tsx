@@ -30,7 +30,7 @@ describe('SettingsModal', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('opens on the Contacts tab and shows the contacts manager', () => {
+  it('opens on the General tab and shows project name + slug', () => {
     renderWithI18n(
       <SettingsModal
         open
@@ -43,11 +43,105 @@ describe('SettingsModal', () => {
     expect(
       screen.getByRole('heading', { name: /project settings/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Contacts/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /General/ })).toHaveAttribute(
       'aria-selected',
       'true',
     );
+    expect(screen.getByLabelText(/project name/i)).toHaveValue('Back Wall');
+    const slug = screen.getByLabelText(/url slug/i) as HTMLInputElement;
+    expect(slug).toHaveValue('back-wall');
+    expect(slug).toHaveAttribute('readonly');
+  });
+
+  it('shows the contacts manager when the Contacts tab is selected', async () => {
+    const user = userEvent.setup();
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('tab', { name: /^Contacts$/ }));
     expect(screen.getByText(/no contacts yet/i)).toBeInTheDocument();
+  });
+
+  it('calls onRename then onSave when the project name changes', async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={onSave}
+        onRename={onRename}
+        onClose={onClose}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText(/project name/i));
+    await user.type(screen.getByLabelText(/project name/i), 'Back Wall v2');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(onRename).toHaveBeenCalledWith('Back Wall v2');
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0].name).toBe('Back Wall v2');
+    // onRename must have completed before onSave fired.
+    expect(onRename.mock.invocationCallOrder[0]).toBeLessThan(
+      onSave.mock.invocationCallOrder[0],
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('skips onRename when the project name is unchanged', async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={onSave}
+        onRename={onRename}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(onRename).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces a rename error and does not call onSave', async () => {
+    const user = userEvent.setup();
+    const onRename = vi
+      .fn()
+      .mockRejectedValue(new Error('Request failed: 409'));
+    const onSave = vi.fn();
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={onSave}
+        onRename={onRename}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText(/project name/i));
+    await user.type(screen.getByLabelText(/project name/i), 'Something Else');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/409/);
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('switches to the Contracts tab and shows the placeholder', async () => {
@@ -133,6 +227,7 @@ describe('SettingsModal', () => {
       />,
     );
 
+    await user.click(screen.getByRole('tab', { name: /^Contacts$/ }));
     await user.click(screen.getByRole('button', { name: /add contact/i }));
     await user.type(screen.getByLabelText(/^Name/i), 'Sandra');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
@@ -179,6 +274,7 @@ describe('SettingsModal', () => {
     expect(
       screen.getByRole('heading', { name: /configurações do projeto/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /^Geral$/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Contatos/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /^Contrato$/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Plantas/ })).toBeInTheDocument();

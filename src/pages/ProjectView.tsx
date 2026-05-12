@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
+import { useRenameProject } from '../lib/projectAdmin';
 import { totalOutstanding } from '../lib/bills';
 import { useTranslation } from '../i18n';
 import { AddExpenseForm } from '../components/AddExpenseForm';
@@ -41,7 +42,8 @@ function distinctValues(expenses: Expense[]): {
 export function ProjectView() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();
-  const { data, loading, error, saving, save } = useProjectData(slug);
+  const { data, loading, error, saving, save, refetch } = useProjectData(slug);
+  const renameProject = useRenameProject();
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filters, setFilters] = useState<ExpenseFilters>(initialFilters);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -162,6 +164,11 @@ export function ProjectView() {
           data={data}
           saving={saving}
           onSave={save}
+          onRename={async (name) => {
+            if (!data) return;
+            await renameProject(data.slug, name);
+            void refetch();
+          }}
           onClose={() => setSettingsOpen(false)}
         />
       )}
