@@ -11,6 +11,13 @@ export const en: Translations = {
   'home.noProjects': 'No projects yet.',
   'home.expenses': 'Expenses',
   'home.total': 'Total',
+  'home.newProject': '+ New project',
+  'home.newProjectTitle': 'New project',
+  'home.newProjectName': 'Name',
+  'home.newProjectNameHint':
+    'A URL-friendly slug is generated from the name.',
+  'home.newProjectCreate': 'Create',
+  'home.creating': 'Creating…',
 
   'project.backToList': '← All projects',
   'project.entriesCountSingular': '{count} entry',
@@ -97,11 +104,16 @@ export const en: Translations = {
 
   'settings.title': 'Project settings',
   'settings.button': 'Settings',
+  'settings.tabGeneral': 'General',
   'settings.tabContacts': 'Contacts',
   'settings.tabContract': 'Contract',
   'settings.tabPlans': 'Plans',
   'settings.placeholderPlans':
     'Architectural drawings, photos of progress, planning documents. (Coming soon.)',
+
+  'general.name': 'Project name',
+  'general.slug': 'URL slug',
+  'general.slugHint': 'Set by the server when the project is created.',
 
   'contract.amount': 'Contract amount',
   'contract.upfront': 'Upfront payment',

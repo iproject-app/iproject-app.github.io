@@ -20,10 +20,13 @@ interface Props {
   data: ProjectData;
   saving: boolean;
   onSave: (next: ProjectData) => Promise<void>;
+  /** Persist a new project display name. Called only when the name actually
+   *  changes; the parent typically wires this to the rename API. */
+  onRename?: (name: string) => Promise<void>;
   onClose: () => void;
 }
 
-type Tab = 'contacts' | 'contract' | 'plans';
+type Tab = 'general' | 'contacts' | 'contract' | 'plans';
 
 interface TabDef {
   value: Tab;
@@ -31,6 +34,7 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
+  { value: 'general', labelKey: 'settings.tabGeneral' },
   { value: 'contacts', labelKey: 'settings.tabContacts' },
   { value: 'contract', labelKey: 'settings.tabContract' },
   { value: 'plans', labelKey: 'settings.tabPlans' },
@@ -41,11 +45,13 @@ export function SettingsModal({
   data,
   saving,
   onSave,
+  onRename,
   onClose,
 }: Props) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState<Tab>('contacts');
+  const [tab, setTab] = useState<Tab>('general');
+  const [nameDraft, setNameDraft] = useState(data.name);
   const [contactDrafts, setContactDrafts] = useState<ContactDraft[]>([]);
   const [contractDraft, setContractDraft] = useState<ContractDraft>(() =>
     projectToContractDraft(data),
@@ -54,9 +60,10 @@ export function SettingsModal({
 
   useEffect(() => {
     if (open) {
+      setNameDraft(data.name);
       setContactDrafts((data.contacts ?? []).map(contactToDraft));
       setContractDraft(projectToContractDraft(data));
-      setTab('contacts');
+      setTab('general');
       setError(null);
     }
   }, [open, data]);
@@ -72,8 +79,17 @@ export function SettingsModal({
     event.preventDefault();
     setError(null);
     try {
+      const trimmedName = nameDraft.trim() || data.name;
+      const nameChanged = trimmedName !== data.name;
+      if (nameChanged && onRename) {
+        await onRename(trimmedName);
+      }
       const next = applyContractDraft(
-        { ...data, contacts: draftsToContacts(contactDrafts) },
+        {
+          ...data,
+          name: trimmedName,
+          contacts: draftsToContacts(contactDrafts),
+        },
         contractDraft,
       );
       await onSave(next);
@@ -133,6 +149,38 @@ export function SettingsModal({
         </div>
 
         <div role="tabpanel">
+          {tab === 'general' && (
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-slate-700">
+                  {t('general.name')}
+                </span>
+                <input
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  disabled={saving}
+                  className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                />
+              </label>
+              <div className="flex flex-col gap-1 text-sm">
+                <label className="flex flex-col gap-1">
+                  <span className="font-medium text-slate-700">
+                    {t('general.slug')}
+                  </span>
+                  <input
+                    type="text"
+                    value={data.slug}
+                    readOnly
+                    className="h-11 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-600"
+                  />
+                </label>
+                <span className="text-xs text-slate-500">
+                  {t('general.slugHint')}
+                </span>
+              </div>
+            </div>
+          )}
           {tab === 'contacts' && (
             <div className="flex flex-col gap-4">
               <ContactsManager

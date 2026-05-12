@@ -18,6 +18,17 @@ export interface Translations {
   'home.noProjects': string;
   'home.expenses': string;
   'home.total': string;
+  'home.newProject': string;
+  'home.newProjectTitle': string;
+  'home.newProjectName': string;
+  'home.newProjectNameHint': string;
+  'home.newProjectCreate': string;
+  'home.creating': string;
+
+  'settings.tabGeneral': string;
+  'general.name': string;
+  'general.slug': string;
+  'general.slugHint': string;
 
   'project.backToList': string;
   'project.entriesCountSingular': string;
