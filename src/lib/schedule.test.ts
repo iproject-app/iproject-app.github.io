@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   nextPayment,
+  nextPaymentDue,
+  paymentsRemaining,
   schedule,
   toggleApproval,
   weeklyPaymentAmount,
@@ -175,6 +177,83 @@ describe('nextPayment', () => {
 
   it('returns null when the contract is not configured', () => {
     expect(nextPayment(project())).toBeNull();
+  });
+});
+
+describe('nextPaymentDue', () => {
+  // 15800 contract, 4 weeks, no upfront → weekly = 3950.
+  const baseContract = (over: Partial<ProjectData> = {}): ProjectData =>
+    project({
+      plannedLabor: 15800,
+      contractWeeks: 4,
+      contractStartDate: '2026-05-01',
+      ...over,
+    });
+
+  it('charges the full weekly amount on week 1 when nothing has been paid', () => {
+    expect(nextPaymentDue(baseContract(), 0)).toBe(3950);
+  });
+
+  it('catches up to the cumulative schedule when behind', () => {
+    // Through week_1 (next un-approved) the schedule expects 3950 × 2 = 7900.
+    // Already paid 5566 on Labor → owe 2334 to catch up.
+    const data = baseContract({ approvedCheckpoints: ['week_0'] });
+    expect(nextPaymentDue(data, 5566)).toBe(2334);
+  });
+
+  it('returns 0 when the worker is already ahead of the cumulative schedule', () => {
+    // Same week_1 checkpoint but 8000 already paid → ahead, so nothing due.
+    const data = baseContract({ approvedCheckpoints: ['week_0'] });
+    expect(nextPaymentDue(data, 8000)).toBe(0);
+  });
+
+  it('returns 0 when every checkpoint is already approved', () => {
+    const data = baseContract({
+      approvedCheckpoints: ['week_0', 'week_1', 'week_2', 'week_3'],
+    });
+    expect(nextPaymentDue(data, 0)).toBe(0);
+  });
+
+  it('returns 0 when the contract is not configured', () => {
+    expect(nextPaymentDue(project(), 0)).toBe(0);
+  });
+
+  it('includes the upfront row when present and unapproved', () => {
+    // Upfront 2000 + 3 weeks of 4000 = 14000 total. First unapproved is
+    // upfront, so scheduled-through-next = 2000. Nothing paid → owe 2000.
+    const data = project({
+      plannedLabor: 14000,
+      contractUpfront: 2000,
+      contractWeeks: 3,
+      contractStartDate: '2026-05-01',
+    });
+    expect(nextPaymentDue(data, 0)).toBe(2000);
+  });
+});
+
+describe('paymentsRemaining', () => {
+  it('counts only unapproved checkpoints', () => {
+    const data = project({
+      plannedLabor: 15800,
+      contractWeeks: 4,
+      contractStartDate: '2026-05-01',
+      approvedCheckpoints: ['week_0', 'week_1'],
+    });
+    expect(paymentsRemaining(data)).toBe(2);
+  });
+
+  it('counts the upfront row when unapproved', () => {
+    const data = project({
+      plannedLabor: 10000,
+      contractUpfront: 1000,
+      contractWeeks: 2,
+      contractStartDate: '2026-05-01',
+    });
+    expect(paymentsRemaining(data)).toBe(3); // upfront + 2 weeks
+  });
+
+  it('returns 0 when the contract is not configured', () => {
+    expect(paymentsRemaining(project())).toBe(0);
   });
 });
 

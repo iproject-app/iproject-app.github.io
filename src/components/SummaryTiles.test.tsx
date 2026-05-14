@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SummaryTiles } from './SummaryTiles';
-import type { Expense } from '../lib/types';
+import type { Expense, ProjectData } from '../lib/types';
 import { renderWithI18n } from '../test/helpers';
 
 const expense = (over: Partial<Expense> = {}): Expense => ({
@@ -173,6 +173,102 @@ describe('SummaryTiles', () => {
       );
       // Without plannedLabor the Contract tile doesn't render at all.
       expect(screen.queryByText(/Contract/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Next-payment footer on the Contract tile', () => {
+    const buildContract = (
+      expenses: Expense[],
+      approved: string[] = [],
+    ): ProjectData => ({
+      slug: 'back-wall',
+      name: 'Back Wall',
+      currency: 'BRL',
+      customCategories: [],
+      contacts: [],
+      plannedLabor: 15800,
+      contractWeeks: 4,
+      contractStartDate: '2026-05-01',
+      approvedCheckpoints: approved,
+      expenses,
+    });
+
+    it('shows the catch-up amount, not a flat weekly division', () => {
+      // Weekly = 3950. Through week_1 (next unapproved), scheduled = 7900.
+      // 5566 paid on Labor → due = 2334. Date for week_1 = start + 14 days.
+      const data = buildContract(
+        [{ ...expense({ category: 'Labor', amount: 5566 }) }],
+        ['week_0'],
+      );
+      renderWithI18n(
+        <SummaryTiles
+          expenses={data.expenses}
+          plannedLabor={data.plannedLabor}
+          contractData={data}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      expect(within(tile).getByText(/2\.334,00/)).toBeInTheDocument();
+      // The naive weekly amount must NOT appear.
+      expect(within(tile).queryByText(/3\.950,00/)).not.toBeInTheDocument();
+    });
+
+    it('clamps to 0 when labor is already ahead of the cumulative schedule', () => {
+      const data = buildContract(
+        [{ ...expense({ category: 'Labor', amount: 10000 }) }],
+        ['week_0'],
+      );
+      renderWithI18n(
+        <SummaryTiles
+          expenses={data.expenses}
+          plannedLabor={data.plannedLabor}
+          contractData={data}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      // Use a precise match so '10.000,00' on the value line doesn't confuse it.
+      const footer = within(tile).getByText(/Next: R\$/i);
+      expect(footer.textContent).toMatch(/Next: R\$\s*0,00/);
+    });
+
+    it('appends a payments-remaining count', () => {
+      const data = buildContract([], ['week_0', 'week_1']);
+      renderWithI18n(
+        <SummaryTiles
+          expenses={data.expenses}
+          plannedLabor={data.plannedLabor}
+          contractData={data}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      expect(
+        within(tile).getByText(/2 payments remaining/),
+      ).toBeInTheDocument();
+    });
+
+    it('hides the footer entirely when the contract is not configured', () => {
+      // plannedLabor is set so the tile renders, but no startDate/weeks →
+      // schedule is empty so renderNextPayment returns null.
+      renderWithI18n(
+        <SummaryTiles
+          expenses={[]}
+          plannedLabor={5000}
+          contractData={{
+            slug: 's',
+            name: 'p',
+            currency: 'BRL',
+            customCategories: [],
+            contacts: [],
+            expenses: [],
+            plannedLabor: 5000,
+          }}
+        />,
+      );
+      const tile = screen.getByText(/Contract/i).closest('div')!;
+      expect(within(tile).queryByText(/Next:/i)).not.toBeInTheDocument();
+      expect(
+        within(tile).queryByText(/payments remaining/i),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -130,6 +130,7 @@ export const en: Translations = {
     'Set the contract amount, start date, and number of weeks to build the schedule.',
   'contract.nextPayment': 'Next: {amount} on {date}',
   'contract.allComplete': 'All checkpoints approved.',
+  'contract.paymentsRemaining': '{count} payments remaining',
 
   'filter.label': 'Filter',
   'filter.all': 'All',
