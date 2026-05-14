@@ -297,4 +297,99 @@ describe('SettingsModal', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
   });
+
+  it('hides the delete-project section when no onDelete is provided', () => {
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: /^delete project$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('requires a second click to confirm before calling onDelete', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^delete project$/i }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/delete this project\? this hides/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^yes, delete$/i }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the user back out of the confirm step', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^delete project$/i }));
+    // Two cancel buttons exist (modal footer + delete confirm). Click the one
+    // next to the "Yes, delete" button.
+    const yesBtn = screen.getByRole('button', { name: /^yes, delete$/i });
+    const cancelBtn = yesBtn.parentElement!.querySelector(
+      'button[type="button"]:not([class*="rose-600"])',
+    );
+    await user.click(cancelBtn as HTMLElement);
+
+    expect(onDelete).not.toHaveBeenCalled();
+    // Back to the initial delete button.
+    expect(
+      screen.getByRole('button', { name: /^delete project$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('surfaces an error and returns to the initial state if onDelete rejects', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi
+      .fn()
+      .mockRejectedValue(new Error('Request failed: 500'));
+    renderWithI18n(
+      <SettingsModal
+        open
+        data={buildData()}
+        saving={false}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^delete project$/i }));
+    await user.click(screen.getByRole('button', { name: /^yes, delete$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
+    // After failure, the user can try again.
+    expect(
+      screen.getByRole('button', { name: /^delete project$/i }),
+    ).toBeInTheDocument();
+  });
 });

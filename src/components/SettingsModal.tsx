@@ -23,6 +23,9 @@ interface Props {
   /** Persist a new project display name. Called only when the name actually
    *  changes; the parent typically wires this to the rename API. */
   onRename?: (name: string) => Promise<void>;
+  /** Soft-delete this project. The parent wires this to the delete API and
+   *  is responsible for navigating away once the promise resolves. */
+  onDelete?: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -46,6 +49,7 @@ export function SettingsModal({
   saving,
   onSave,
   onRename,
+  onDelete,
   onClose,
 }: Props) {
   const { t } = useTranslation();
@@ -57,6 +61,8 @@ export function SettingsModal({
     projectToContractDraft(data),
   );
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -65,6 +71,8 @@ export function SettingsModal({
       setContractDraft(projectToContractDraft(data));
       setTab('general');
       setError(null);
+      setConfirmingDelete(false);
+      setDeleting(false);
     }
   }, [open, data]);
 
@@ -179,6 +187,71 @@ export function SettingsModal({
                   {t('general.slugHint')}
                 </span>
               </div>
+              {onDelete && (
+                <section
+                  aria-label={t('general.dangerZone')}
+                  className="mt-2 flex flex-col gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4"
+                >
+                  <h3 className="text-sm font-semibold text-rose-800">
+                    {t('general.dangerZone')}
+                  </h3>
+                  <p className="text-xs text-rose-700/90">
+                    {t('general.deleteProjectHint')}
+                  </p>
+                  {!confirmingDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDelete(true)}
+                      disabled={saving || deleting}
+                      className="inline-flex h-10 w-fit items-center justify-center rounded-md border border-rose-300 bg-white px-4 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {t('general.deleteProject')}
+                    </button>
+                  )}
+                  {confirmingDelete && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium text-rose-900">
+                        {t('general.deleteConfirm')}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setError(null);
+                            setDeleting(true);
+                            try {
+                              await onDelete();
+                              // Parent navigates / closes; nothing else to do.
+                            } catch (e: unknown) {
+                              const msg =
+                                e instanceof Error
+                                  ? e.message
+                                  : t('errors.saveFailed');
+                              setError(msg);
+                              setDeleting(false);
+                              setConfirmingDelete(false);
+                            }
+                          }}
+                          disabled={deleting}
+                          className="inline-flex h-10 items-center justify-center rounded-md bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deleting
+                            ? t('general.deleting')
+                            : t('general.deleteConfirmYes')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingDelete(false)}
+                          disabled={deleting}
+                          className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+                        >
+                          {t('edit.cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           )}
           {tab === 'contacts' && (

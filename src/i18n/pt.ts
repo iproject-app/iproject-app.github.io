@@ -115,6 +115,14 @@ export const pt: Translations = {
   'general.slug': 'Slug da URL',
   'general.slugHint':
     'Definido pelo servidor quando o projeto é criado.',
+  'general.dangerZone': 'Zona de perigo',
+  'general.deleteProject': 'Excluir projeto',
+  'general.deleteProjectHint':
+    'Move este projeto para a lixeira do servidor. Reversível por um operador.',
+  'general.deleteConfirm':
+    'Excluir este projeto? Isso oculta todas as despesas e recibos.',
+  'general.deleteConfirmYes': 'Sim, excluir',
+  'general.deleting': 'Excluindo…',
 
   'contract.amount': 'Valor do contrato',
   'contract.upfront': 'Pagamento inicial',

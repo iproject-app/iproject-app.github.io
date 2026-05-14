@@ -114,6 +114,14 @@ export const en: Translations = {
   'general.name': 'Project name',
   'general.slug': 'URL slug',
   'general.slugHint': 'Set by the server when the project is created.',
+  'general.dangerZone': 'Danger zone',
+  'general.deleteProject': 'Delete project',
+  'general.deleteProjectHint':
+    'Moves this project to the server-side trash. Reversible by an operator.',
+  'general.deleteConfirm':
+    'Delete this project? This hides all expenses and receipts.',
+  'general.deleteConfirmYes': 'Yes, delete',
+  'general.deleting': 'Deleting…',
 
   'contract.amount': 'Contract amount',
   'contract.upfront': 'Upfront payment',
