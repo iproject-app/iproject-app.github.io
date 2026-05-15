@@ -125,6 +125,7 @@ export interface Translations {
   'contract.notConfigured': string;
   'contract.nextPayment': string;
   'contract.allComplete': string;
+  'contract.paymentsRemaining': string;
 
   'filter.label': string;
   'filter.all': string;

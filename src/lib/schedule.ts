@@ -83,6 +83,33 @@ export function nextPayment(data: ProjectData): CheckpointRow | null {
   return schedule(data).find((row) => !row.approved) ?? null;
 }
 
+/** Catch-up amount due at the next un-approved checkpoint: cumulative
+ *  scheduled spend through that checkpoint minus what's already been paid
+ *  on labor, clamped at 0 when you're ahead of schedule. Returns 0 if
+ *  there's no next checkpoint (all approved, or contract not configured). */
+export function nextPaymentDue(
+  data: ProjectData,
+  paidLaborTotal: number,
+): number {
+  const rows = schedule(data);
+  let scheduledThroughNext = 0;
+  let foundNext = false;
+  for (const row of rows) {
+    scheduledThroughNext += row.amount;
+    if (!row.approved) {
+      foundNext = true;
+      break;
+    }
+  }
+  if (!foundNext) return 0;
+  return Math.max(0, scheduledThroughNext - paidLaborTotal);
+}
+
+/** Count of checkpoints not yet approved (upfront + weekly slots). */
+export function paymentsRemaining(data: ProjectData): number {
+  return schedule(data).filter((row) => !row.approved).length;
+}
+
 /** Toggle (or set) the approval state for a checkpoint key. Returns a new
  *  array suitable for `approvedCheckpoints`. */
 export function toggleApproval(

@@ -9,7 +9,12 @@ import {
 import { totalOutstanding } from '../lib/bills';
 import { categoryClass } from '../lib/categories';
 import { formatDate, formatMoney } from '../lib/format';
-import { nextPayment, schedule } from '../lib/schedule';
+import {
+  nextPayment,
+  nextPaymentDue,
+  paymentsRemaining,
+  schedule,
+} from '../lib/schedule';
 import type { ProjectData } from '../lib/types';
 import { useTranslation } from '../i18n';
 
@@ -231,18 +236,31 @@ function HeroTile({
 
 function renderNextPayment(
   data: ProjectData,
-  t: (key: 'contract.nextPayment' | 'contract.allComplete',
-    vars?: Record<string, string | number>) => string,
+  t: (
+    key:
+      | 'contract.nextPayment'
+      | 'contract.allComplete'
+      | 'contract.paymentsRemaining',
+    vars?: Record<string, string | number>,
+  ) => string,
 ): React.ReactNode {
   if (schedule(data).length === 0) return null;
   const next = nextPayment(data);
   if (!next) return <span>{t('contract.allComplete')}</span>;
+  // "Next" amount is the catch-up against the cumulative schedule, not a
+  // raw weekly division — so the dashboard tells you what to actually pay
+  // given everything that's already been paid on Labor.
+  const labored = paidOnCategory(data.expenses, 'Labor');
+  const due = nextPaymentDue(data, labored);
+  const remaining = paymentsRemaining(data);
   return (
     <span>
       {t('contract.nextPayment', {
-        amount: formatMoney(next.amount),
+        amount: formatMoney(due),
         date: formatDate(next.date),
       })}
+      {' · '}
+      {t('contract.paymentsRemaining', { count: remaining })}
     </span>
   );
 }

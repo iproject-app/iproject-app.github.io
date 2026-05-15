@@ -131,6 +131,7 @@ export const pt: Translations = {
     'Defina o valor do contrato, a data de início e o número de semanas para gerar o cronograma.',
   'contract.nextPayment': 'Próximo: {amount} em {date}',
   'contract.allComplete': 'Todos os checkpoints aprovados.',
+  'contract.paymentsRemaining': '{count} pagamentos restantes',
 
   'filter.label': 'Filtro',
   'filter.all': 'Todos',
