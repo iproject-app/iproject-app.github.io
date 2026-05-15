@@ -34,3 +34,23 @@ export function useRenameProject() {
     [api],
   );
 }
+
+export interface DeletedProject {
+  slug: string;
+  trashed: string;
+}
+
+/** POST /api/projects/<slug>/delete → { slug, trashed }. Server moves the
+ *  project tree into projects/.trash/<slug>-<timestamp> so the action is
+ *  reversible on the cluster's filesystem. */
+export function useDeleteProject() {
+  const api = useApi();
+  return useCallback(
+    async (slug: string): Promise<DeletedProject> =>
+      api<DeletedProject>(
+        `/api/projects/${encodeURIComponent(slug)}/delete`,
+        { method: 'POST' },
+      ),
+    [api],
+  );
+}

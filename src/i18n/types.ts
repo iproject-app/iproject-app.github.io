@@ -29,6 +29,12 @@ export interface Translations {
   'general.name': string;
   'general.slug': string;
   'general.slugHint': string;
+  'general.dangerZone': string;
+  'general.deleteProject': string;
+  'general.deleteProjectHint': string;
+  'general.deleteConfirm': string;
+  'general.deleteConfirmYes': string;
+  'general.deleting': string;
 
   'project.backToList': string;
   'project.entriesCountSingular': string;

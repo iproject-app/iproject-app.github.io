@@ -9,7 +9,11 @@ import {
 } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { http, HttpResponse, makeServer } from '../test/msw';
-import { useCreateProject, useRenameProject } from './projectAdmin';
+import {
+  useCreateProject,
+  useDeleteProject,
+  useRenameProject,
+} from './projectAdmin';
 
 vi.mock('@auth0/auth0-react', () => {
   const ctx = {
@@ -103,5 +107,56 @@ describe('useRenameProject', () => {
 
     const { result } = renderHook(() => useRenameProject());
     await expect(result.current('missing', 'X')).rejects.toThrow(/404/);
+  });
+});
+
+describe('useDeleteProject', () => {
+  it('POSTs to /api/projects/<slug>/delete and returns the server payload', async () => {
+    let observedPath = '';
+    server.use(
+      http.post('*/api/projects/:slug/delete', ({ request }) => {
+        observedPath = new URL(request.url).pathname;
+        return HttpResponse.json({
+          slug: 'kitchen',
+          trashed: 'kitchen-2026-05-14_182000',
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useDeleteProject());
+    const deleted = await result.current('kitchen');
+
+    expect(observedPath).toBe('/api/projects/kitchen/delete');
+    expect(deleted).toEqual({
+      slug: 'kitchen',
+      trashed: 'kitchen-2026-05-14_182000',
+    });
+  });
+
+  it('URL-encodes a slug that contains unsafe characters', async () => {
+    let observedPath = '';
+    server.use(
+      http.post('*/api/projects/*', ({ request }) => {
+        observedPath = new URL(request.url).pathname;
+        return HttpResponse.json({ slug: 'odd', trashed: 'odd-x' });
+      }),
+    );
+
+    const { result } = renderHook(() => useDeleteProject());
+    await result.current('odd slug/with stuff');
+
+    expect(observedPath).toContain(encodeURIComponent('odd slug/with stuff'));
+  });
+
+  it('throws on a 404', async () => {
+    server.use(
+      http.post(
+        '*/api/projects/:slug/delete',
+        () => new HttpResponse(null, { status: 404 }),
+      ),
+    );
+
+    const { result } = renderHook(() => useDeleteProject());
+    await expect(result.current('missing')).rejects.toThrow(/404/);
   });
 });
