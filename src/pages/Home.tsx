@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProjects } from '../lib/projects';
 import { useTranslation } from '../i18n';
 import { Banner } from '../components/Banner';
@@ -26,13 +26,21 @@ export function Home() {
             {t('home.projects')}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
-        >
-          {t('home.newProject')}
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/bid-estimator"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {t('bid.title')}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700"
+          >
+            {t('home.newProject')}
+          </button>
+        </div>
       </header>
 
       <section className="mt-6">

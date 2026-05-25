@@ -4,13 +4,11 @@ Raw ideas, not yet ready to be numbered stories. Captured 2026-05-10. As any
 of these solidify into a buildable shape, spin them out into a numbered story
 file in this directory and remove (or strike) the corresponding entry here.
 
-## Artifacts on a project
+## Artifacts on a project — SPUN OUT
 
-- **Plan attachments** — PDFs / images that represent what we're building
-  (architectural drawings, sketches, scope diagrams). Attach to a project,
-  not to an expense.
-- **Progress reports** — photo updates over time (one or many per checkpoint).
-  Owner can review chronologically.
+Now numbered stories: `001-project-plan-attachments.md`,
+`002-project-progress-reports.md`, `003-artifact-polish-and-scale.md`.
+This idea has solidified into a buildable shape; see those files.
 
 ## Multi-party access (contractor view)
 

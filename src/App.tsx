@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { NavBar } from './components/NavBar';
 import { Home } from './pages/Home';
 import { ProjectView } from './pages/ProjectView';
+import { BidEstimator } from './pages/BidEstimator';
 import { NotFound } from './pages/NotFound';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 
@@ -24,6 +25,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ProjectView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bid-estimator"
+            element={
+              <ProtectedRoute>
+                <BidEstimator />
               </ProtectedRoute>
             }
           />
