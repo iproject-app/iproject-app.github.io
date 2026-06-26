@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { withAuthenticationRequired } from '@auth0/auth0-react';
+import { isAuthDisabled } from './authDisabled';
 
 function Loading() {
   return (
@@ -19,10 +20,11 @@ const Authenticated = withAuthenticationRequired(Gate, {
   onRedirecting: () => <Loading />,
 });
 
-/** Auth-gated route. In E2E mode (VITE_E2E=true) the auth check is bypassed
- *  so Playwright can drive the UI without a real Auth0 session. */
+/** Auth-gated route. The auth check is bypassed when auth is disabled — in
+ *  E2E mode (VITE_E2E=true) or via the VITE_AUTH_DISABLED deployment flag —
+ *  so the UI renders without a real Auth0 session. */
 export function ProtectedRoute({ children }: Props) {
-  if (import.meta.env.VITE_E2E === 'true') {
+  if (isAuthDisabled()) {
     return <>{children}</>;
   }
   return <Authenticated>{children}</Authenticated>;
