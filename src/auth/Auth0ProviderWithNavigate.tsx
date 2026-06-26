@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Auth0Provider, type AppState } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
+import { isAuthDisabled } from './authDisabled';
 
 interface Props {
   children: ReactNode;
@@ -9,11 +10,16 @@ interface Props {
 export function Auth0ProviderWithNavigate({ children }: Props) {
   const navigate = useNavigate();
 
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  // When auth is disabled, the provider still mounts (so useAuth0() consumers
+  // like NavBar/useApi have a context) but is never exercised: ProtectedRoute
+  // skips the login gate, so loginWithRedirect/getAccessTokenSilently are never
+  // called. Placeholders keep Auth0Provider from rejecting empty config.
+  const disabled = isAuthDisabled();
+  const domain = import.meta.env.VITE_AUTH0_DOMAIN || (disabled ? 'auth-disabled.local' : '');
+  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID || (disabled ? 'auth-disabled' : '');
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
-  if (!domain || !clientId) {
+  if (!disabled && (!domain || !clientId)) {
     // In production we want a hard failure — silently swallowing missing env
     // vars yields confusing 401s much later. Tests inject dummy values via
     // VITE_AUTH0_DOMAIN/CLIENT_ID; production sets the real ones.
