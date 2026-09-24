@@ -58,6 +58,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
   });
   const [error, setError] = useState<FormError | null>(null);
   const [open, setOpen] = useState(false);
+  const pendingExpenseId = useRef<string | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const processReceipt = useProcessReceipt();
@@ -127,7 +128,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
     }
 
     const expense: Expense = {
-      id: newExpenseId(),
+      id: pendingExpenseId.current ??= newExpenseId(),
       ...result.expense,
       payer: normalizeContactName(result.expense.payer, data.contacts ?? []),
       payee: normalizeContactName(result.expense.payee, data.contacts ?? []),
@@ -139,7 +140,11 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
     };
 
     try {
-      await onAdd({ ...data, expenses: [...data.expenses, expense] });
+      await onAdd({
+        ...data,
+        expenses: [...data.expenses.filter((item) => item.id !== expense.id), expense],
+      });
+      pendingExpenseId.current = null;
       setForm(blankForm());
       setExtras({});
       setReceiptState({ kind: 'idle' });
@@ -162,6 +167,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
   };
 
   const clear = () => {
+    pendingExpenseId.current = null;
     setForm(blankForm());
     setExtras({});
     setReceiptState({ kind: 'idle' });

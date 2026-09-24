@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
+import { useApi } from '../lib/api';
 import { useProjects } from '../lib/projects';
 import { useTranslation } from '../i18n';
 import { Banner } from '../components/Banner';
@@ -12,6 +13,17 @@ export function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { projects, loading, error } = useProjects();
+  const api = useApi();
+  const [subject, setSubject] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (projects?.length === 0) {
+      void api<{ sub: string }>('/api/whoami').then((identity) => {
+        if (!cancelled) setSubject(identity.sub);
+      }).catch(() => { /* Identity is optional on older servers. */ });
+    }
+    return () => { cancelled = true; };
+  }, [api, projects]);
   const [createOpen, setCreateOpen] = useState(false);
   const greeting = user?.given_name ?? user?.nickname ?? user?.name ?? 'there';
 
@@ -44,7 +56,10 @@ export function Home() {
           </Banner>
         )}
         {!loading && !error && projects && projects.length === 0 && (
-          <Banner>{t('home.noProjects')}</Banner>
+          <Banner>
+            <p>{t('home.noProjects')}</p>
+            {subject && <p className="mt-2 break-all">{t('home.userId', { id: subject })}</p>}
+          </Banner>
         )}
         {!loading && !error && projects && projects.length > 0 && (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

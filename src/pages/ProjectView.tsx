@@ -1,3 +1,4 @@
+import { useAuth0 } from '@auth0/auth0-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProjectData } from '../lib/projectData';
@@ -43,7 +44,8 @@ export function ProjectView() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data, loading, error, saving, save, refetch } = useProjectData(slug);
+  const { loginWithRedirect } = useAuth0();
+  const { data, loading, error, saving, saveError, save, refetch } = useProjectData(slug);
   const renameProject = useRenameProject();
   const deleteProject = useDeleteProject();
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -107,7 +109,7 @@ export function ProjectView() {
         )}
       </header>
 
-      {!loading && !error && data && (data.expenses.length > 0 || data.plannedLabor) && (
+      {!loading && data && (data.expenses.length > 0 || data.plannedLabor) && (
         <section className="mt-6">
           <SummaryTiles
             expenses={data.expenses}
@@ -119,14 +121,38 @@ export function ProjectView() {
         </section>
       )}
 
-      {!loading && !error && data && (
+      {!loading && data && (
         <section className="mt-6">
           <AddExpenseForm data={data} saving={saving} onAdd={save} />
         </section>
       )}
 
+      {saveError && (
+        <section className="mt-6">
+          <Banner variant="error">
+            <p>{t(`save.${saveError}`)}</p>
+            {saveError === 'conflict' && (
+              <button type="button" className="mt-3 font-medium underline" onClick={() => {
+                if (window.confirm(t('save.discardWarning'))) {
+                  setEditing(null);
+                  setSettingsOpen(false);
+                  void refetch();
+                }
+              }}>{t('save.reload')}</button>
+            )}
+            {saveError === 'unauthorized' && (
+              <button type="button" className="mt-3 font-medium underline" onClick={() => {
+                if (window.confirm(t('save.loginWarning'))) {
+                  void loginWithRedirect({ appState: { returnTo: window.location.pathname } });
+                }
+              }}>{t('save.login')}</button>
+            )}
+          </Banner>
+        </section>
+      )}
+
       <section className="mt-6 flex flex-col gap-4">
-        {!loading && !error && data && data.expenses.length > 0 && (
+        {!loading && data && data.expenses.length > 0 && (
           <FilterBar
             value={filters}
             onChange={setFilters}
@@ -142,10 +168,10 @@ export function ProjectView() {
             <p className="mt-1 break-words text-rose-700/90">{error}</p>
           </Banner>
         )}
-        {!loading && !error && data && data.expenses.length === 0 && (
+        {!loading && data && data.expenses.length === 0 && (
           <Banner>{t('project.noEntries')}</Banner>
         )}
-        {!loading && !error && data && data.expenses.length > 0 && (
+        {!loading && data && data.expenses.length > 0 && (
           <ExpenseList expenses={visibleExpenses} onRowClick={setEditing} />
         )}
       </section>
@@ -169,7 +195,6 @@ export function ProjectView() {
           onRename={async (name) => {
             if (!data) return;
             await renameProject(data.slug, name);
-            void refetch();
           }}
           onDelete={async () => {
             if (!data) return;
