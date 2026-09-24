@@ -30,6 +30,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run lint
+
       - name: Typecheck + build
         env:
           VITE_AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN || 'placeholder.auth0.com' }}

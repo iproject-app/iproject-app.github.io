@@ -37,112 +37,121 @@ type ProjectFixture = {
   expenses: typeof initialExpense[];
 };
 
-test('list → detail → add → edit → delete', async ({ page }) => {
-  const projectData: ProjectFixture = {
-    slug: 'back-wall',
-    name: 'Back Wall',
-    currency: 'BRL',
-    customCategories: [],
-    contacts: [],
-    expenses: [initialExpense],
-  };
-  const saved: { expenses: ExpenseLite[] }[] = [];
+for (const versioned of [false, true]) {
+  test(`list → detail → add → edit → delete (${versioned ? 'new' : 'old'} server)`, async ({ page }) => {
+    let revision = 7;
+    const projectData: ProjectFixture = {
+      slug: 'back-wall',
+      name: 'Back Wall',
+      currency: 'BRL',
+      customCategories: [],
+      contacts: [],
+      expenses: [initialExpense],
+    };
+    const saved: { expenses: ExpenseLite[] }[] = [];
 
-  await page.route('**/api/projects', (route: Route) =>
-    route.fulfill({ json: projectListResponse }),
-  );
-  await page.route('**/api/data*', async (route: Route) => {
-    if (route.request().method() === 'POST') {
-      const body = route.request().postDataJSON() as { expenses: ExpenseLite[] };
-      saved.push(body);
-      // Apply the change to the in-memory fixture so subsequent GETs see it.
-      projectData.expenses = body.expenses as ProjectFixture['expenses'];
-      await route.fulfill({ json: { ok: true } });
-      return;
-    }
-    await route.fulfill({ json: projectData });
+    await page.route('**/api/projects', (route: Route) =>
+      route.fulfill({ json: projectListResponse }),
+    );
+    await page.route('**/api/data*', async (route: Route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as { expenses: ExpenseLite[]; revision?: number };
+        expect(body.revision).toBe(versioned ? revision : undefined);
+        if (versioned && body.revision !== revision) {
+          await route.fulfill({ status: 409, json: { revision } });
+          return;
+        }
+        saved.push(body);
+        // Apply the change to the in-memory fixture so subsequent GETs see it.
+        projectData.expenses = body.expenses as ProjectFixture['expenses'];
+        await route.fulfill({ json: { ok: true, ...(versioned ? { revision: ++revision } : {}) } });
+        return;
+      }
+      await route.fulfill({ json: { ...projectData, ...(versioned ? { revision } : {}) } });
+    });
+
+    await page.goto('/');
+
+    // List shows the back-wall card → click into it.
+    await expect(page.getByRole('heading', { name: 'Back Wall' })).toBeVisible();
+    await page.getByRole('link', { name: /back wall/i }).click();
+    await expect(page).toHaveURL(/\/projects\/back-wall/);
+
+    // Existing entry is rendered in the table.
+    await expect(page.getByRole('table').getByText('→ Francisco')).toBeVisible();
+
+    // Mock the AI extraction endpoint to auto-fill some of the form fields.
+    await page.route('**/api/process-receipt*', (route: Route) =>
+      route.fulfill({
+        json: {
+          fields: {
+            date: '2026-05-10',
+            amount: 99.5,
+            payer: 'AI Payer',
+            payee: 'Pedro',
+            description: 'Receipt-extracted',
+            category: 'Materials',
+            currency: 'BRL',
+            kind: 'expense',
+          },
+          filename: 'canonical-pedro.jpg',
+        },
+      }),
+    );
+
+    // Open the form, drop a receipt, verify the AI auto-filled the fields.
+    await page.getByRole('button', { name: /expand add expense form/i }).click();
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({
+        name: 'snap.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from('fake-jpeg-bytes'),
+      });
+    await expect(page.getByText(/Attached: canonical-pedro\.jpg/)).toBeVisible();
+    await expect(page.getByLabel(/^Payee/)).toHaveValue('Pedro');
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('99.5');
+
+    await page.getByRole('button', { name: 'Add expense', exact: true }).click();
+
+    await expect.poll(() => saved.length).toBeGreaterThanOrEqual(1);
+    const afterAdd = saved[saved.length - 1].expenses;
+    expect(afterAdd).toHaveLength(2);
+    const pedro = afterAdd.find((e) => e.payee === 'Pedro');
+    expect(pedro?.amount).toBe(99.5);
+    // The canonical filename from the OCR endpoint round-trips onto the expense.
+    expect((pedro as unknown as { receipt?: string })?.receipt).toBe(
+      'canonical-pedro.jpg',
+    );
+
+    // Click the original Francisco row by content (the new Pedro row is sorted
+    // first). Modal opens in *view* mode now — the pencil icon enters edit.
+    await page.locator('tr', { hasText: 'Francisco' }).click();
+    await expect(page.getByRole('heading', { name: /^Details$/i })).toBeVisible();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /edit expense/i })).toBeVisible();
+    await page.getByRole('dialog').getByLabel(/^Amount/).fill('750');
+    await page.getByRole('button', { name: /save changes/i }).click();
+
+    await expect.poll(() => saved.length).toBeGreaterThanOrEqual(2);
+    const afterEdit = saved[saved.length - 1].expenses;
+    const francisco = afterEdit.find((e) => e.payee === 'Francisco');
+    expect(francisco?.amount).toBe(750);
+
+    // Delete the Pedro entry from view mode; "Are you sure?" prompt + confirm.
+    await page.locator('tr', { hasText: 'Pedro' }).click();
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(
+      page.getByRole('alertdialog', { name: /delete this entry/i }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: /yes, delete/i }).click();
+
+    await expect.poll(() => saved.length).toBeGreaterThanOrEqual(3);
+    const afterDelete = saved[saved.length - 1].expenses;
+    expect(afterDelete).toHaveLength(1);
   });
 
-  await page.goto('/');
-
-  // List shows the back-wall card → click into it.
-  await expect(page.getByRole('heading', { name: 'Back Wall' })).toBeVisible();
-  await page.getByRole('link', { name: /back wall/i }).click();
-  await expect(page).toHaveURL(/\/projects\/back-wall/);
-
-  // Existing entry is rendered in the table.
-  await expect(page.getByRole('table').getByText('→ Francisco')).toBeVisible();
-
-  // Mock the AI extraction endpoint to auto-fill some of the form fields.
-  await page.route('**/api/process-receipt*', (route: Route) =>
-    route.fulfill({
-      json: {
-        fields: {
-          date: '2026-05-10',
-          amount: 99.5,
-          payer: 'AI Payer',
-          payee: 'Pedro',
-          description: 'Receipt-extracted',
-          category: 'Materials',
-          currency: 'BRL',
-          kind: 'expense',
-        },
-        filename: 'canonical-pedro.jpg',
-      },
-    }),
-  );
-
-  // Open the form, drop a receipt, verify the AI auto-filled the fields.
-  await page.getByRole('button', { name: /expand add expense form/i }).click();
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: 'snap.jpg',
-      mimeType: 'image/jpeg',
-      buffer: Buffer.from('fake-jpeg-bytes'),
-    });
-  await expect(page.getByText(/Attached: canonical-pedro\.jpg/)).toBeVisible();
-  await expect(page.getByLabel(/^Payee/)).toHaveValue('Pedro');
-  await expect(page.getByLabel(/^Amount/)).toHaveValue('99.5');
-
-  await page.getByRole('button', { name: 'Add expense', exact: true }).click();
-
-  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(1);
-  const afterAdd = saved[saved.length - 1].expenses;
-  expect(afterAdd).toHaveLength(2);
-  const pedro = afterAdd.find((e) => e.payee === 'Pedro');
-  expect(pedro?.amount).toBe(99.5);
-  // The canonical filename from the OCR endpoint round-trips onto the expense.
-  expect((pedro as unknown as { receipt?: string })?.receipt).toBe(
-    'canonical-pedro.jpg',
-  );
-
-  // Click the original Francisco row by content (the new Pedro row is sorted
-  // first). Modal opens in *view* mode now — the pencil icon enters edit.
-  await page.locator('tr', { hasText: 'Francisco' }).click();
-  await expect(page.getByRole('heading', { name: /^Details$/i })).toBeVisible();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /edit expense/i })).toBeVisible();
-  await page.getByLabel(/^Amount/).fill('750');
-  await page.getByRole('button', { name: /save changes/i }).click();
-
-  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(2);
-  const afterEdit = saved[saved.length - 1].expenses;
-  const francisco = afterEdit.find((e) => e.payee === 'Francisco');
-  expect(francisco?.amount).toBe(750);
-
-  // Delete the Pedro entry from view mode; "Are you sure?" prompt + confirm.
-  await page.locator('tr', { hasText: 'Pedro' }).click();
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(
-    page.getByRole('alertdialog', { name: /delete this entry/i }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: /yes, delete/i }).click();
-
-  await expect.poll(() => saved.length).toBeGreaterThanOrEqual(3);
-  const afterDelete = saved[saved.length - 1].expenses;
-  expect(afterDelete).toHaveLength(1);
-});
+}
 
 test('outstanding pill + bill linkage', async ({ page }) => {
   type Bill = typeof initialExpense & { kind: 'bill' };
@@ -173,7 +182,7 @@ test('outstanding pill + bill linkage', async ({ page }) => {
   );
   await page.route('**/api/data*', async (route: Route) => {
     if (route.request().method() === 'POST') {
-      const body = route.request().postDataJSON() as { expenses: ExpenseLite[] };
+      const body = route.request().postDataJSON() as { expenses: ExpenseLite[]; revision?: number };
       saved.push(body);
       projectData.expenses = body.expenses as ProjectFixture['expenses'];
       await route.fulfill({ json: { ok: true } });
@@ -268,3 +277,75 @@ test('detail modal shows attached receipt image', async ({ page }) => {
   await expect(img).toBeVisible();
   await expect(img).toHaveAttribute('src', /^blob:/);
 });
+
+for (const status of [409, 428, 401, 403, 500, 0]) {
+  test(`save failure ${status} keeps edits visible and offers recovery`, async ({ page }) => {
+    let posts = 0;
+    let gets = 0;
+    let fail = true;
+    const bodies: { expenses: ExpenseLite[]; revision: number }[] = [];
+    await page.route('**/api/data*', async (route) => {
+      if (route.request().method() === 'POST') {
+        posts++;
+        bodies.push(route.request().postDataJSON());
+        if (fail) {
+          if (status === 0) await route.abort();
+          else await route.fulfill({ status, json: { revision: 9 } });
+        } else await route.fulfill({ json: { ok: true, revision: 10 } });
+        return;
+      }
+      gets++;
+      await route.fulfill({ json: {
+        slug: 'back-wall', name: 'Back Wall', currency: 'BRL',
+        contacts: [], customCategories: [], expenses: [initialExpense],
+        revision: gets === 1 ? 7 : 9,
+      } });
+    });
+    await page.goto('/projects/back-wall');
+    await page.getByRole('button', { name: /expand add expense form/i }).click();
+    await page.getByLabel(/^Payee/).fill('My unsaved expense');
+    await page.getByLabel(/^Amount/).fill('123');
+    const submit = page.getByRole('button', { name: 'Add expense', exact: true });
+    await submit.click();
+    const message = status === 409 || status === 428 ? /saving is paused/
+      : status === 401 ? /Please log in again/
+      : status === 403 ? /You don't have access to this project/
+      : /Check your connection and try saving again/;
+    await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
+    await expect(page.getByLabel(/^Payee/)).toHaveValue('My unsaved expense');
+    await expect(page.getByRole('table').getByText('→ My unsaved expense')).toBeVisible();
+    expect(gets).toBe(1);
+    if (status === 409 || status === 428) {
+      await submit.click();
+      expect(posts).toBe(1);
+      page.once('dialog', async (dialog) => {
+        expect(dialog.message()).toContain('unsaved edits will be discarded');
+        await dialog.dismiss();
+      });
+      await page.getByRole('button', { name: 'Reload latest' }).click();
+      expect(gets).toBe(1);
+      await expect(page.getByLabel(/^Payee/)).toHaveValue('My unsaved expense');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'Reload latest' }).click();
+      await expect(page.getByRole('table').getByText('→ My unsaved expense')).toHaveCount(0);
+      await expect(page.getByRole('alert')).toHaveCount(0);
+      expect(gets).toBe(2);
+      fail = false;
+      await page.getByRole('button', { name: /expand add expense form/i }).click();
+      await page.getByLabel(/^Payee/).fill('Reapplied expense');
+      await page.getByLabel(/^Amount/).fill('123');
+      await submit.click();
+      await expect.poll(() => posts).toBe(2);
+      expect(bodies[1].revision).toBe(9);
+    } else if (status === 401) {
+      await expect(page.getByRole('button', { name: 'Log in again' })).toBeVisible();
+    } else if (status === 500 || status === 0) {
+      fail = false;
+      await submit.click();
+      await expect(page.getByRole('alert')).toHaveCount(0);
+      expect(posts).toBe(2);
+      expect(bodies[1].expenses).toHaveLength(2); // retry must not duplicate the local expense
+      expect(bodies[1].revision).toBe(7);
+    }
+  });
+}

@@ -72,3 +72,18 @@ describe('Home', () => {
     expect(await screen.findByTestId('project-page')).toBeInTheDocument();
   });
 });
+
+
+it.each([200, 404])('explains an empty membership list with optional identity (%s)', async (status) => {
+  server.use(
+    http.get('*/api/projects', () => HttpResponse.json({ projects: [] })),
+    http.get('*/api/whoami', () => HttpResponse.json({ sub: 'auth0|new-user' }, { status })),
+  );
+  renderWithProviders(<Home />);
+  expect(await screen.findByText('No projects shared with you yet')).toBeInTheDocument();
+  if (status === 200) {
+    expect(await screen.findByText('Your user ID: auth0|new-user')).toBeInTheDocument();
+  } else {
+    expect(screen.queryByText(/Your user ID/)).not.toBeInTheDocument();
+  }
+});

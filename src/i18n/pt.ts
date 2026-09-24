@@ -1,6 +1,15 @@
 import type { Translations } from './types';
 
 export const pt: Translations = {
+  'home.userId': 'Seu ID de usuário: {id}',
+  'save.conflict': 'Este projeto mudou no servidor. Suas alterações continuam aqui, mas o salvamento está pausado. Recarregue a versão mais recente para continuar.',
+  'save.unauthorized': 'Suas alterações não foram salvas. Entre novamente.',
+  'save.forbidden': 'Você não tem acesso a este projeto. Suas alterações não foram salvas.',
+  'save.failed': 'Suas alterações não foram salvas. Verifique sua conexão e tente salvar novamente.',
+  'save.reload': 'Recarregar versão mais recente',
+  'save.discardWarning': 'Recarregar a versão mais recente? Suas alterações não salvas serão descartadas.',
+  'save.login': 'Entrar novamente',
+  'save.loginWarning': 'Entrar novamente vai sair desta página. Copie suas alterações não salvas antes de continuar.',
   'nav.logout': 'Sair',
   'nav.languageLabel': 'Trocar idioma',
 
@@ -8,7 +17,7 @@ export const pt: Translations = {
   'home.projects': 'Projetos',
   'home.loadingProjects': 'Carregando projetos…',
   'home.errorLoadingProjects': 'Não foi possível carregar os projetos.',
-  'home.noProjects': 'Nenhum projeto ainda.',
+  'home.noProjects': 'Nenhum projeto compartilhado com você ainda',
   'home.expenses': 'Despesas',
   'home.total': 'Total',
   'home.newProject': '+ Novo projeto',

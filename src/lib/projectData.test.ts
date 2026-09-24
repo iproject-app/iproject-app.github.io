@@ -7,6 +7,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { StrictMode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse, makeServer } from '../test/msw';
 import { useProjectData } from './projectData';
@@ -123,7 +124,174 @@ describe('useProjectData', () => {
 
     expect(caught).toBeInstanceOf(Error);
     expect((caught as Error).message).toMatch(/500/);
-    await waitFor(() => expect(result.current.error).toMatch(/500/));
+    expect(result.current.saveError).toBe('failed');
     expect(result.current.saving).toBe(false);
   });
+});
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+describe('revision-aware saves', () => {
+  it('round-trips revisions across consecutive saves without refetching', async () => {
+    const revisions: unknown[] = [];
+    let gets = 0;
+    let revision = 7;
+    server.use(
+      http.get('*/api/data', () => {
+        gets++;
+        return HttpResponse.json({ ...buildData(), revision });
+      }),
+      http.post('*/api/data', async ({ request }) => {
+        const body = await request.json() as { revision: number };
+        revisions.push(body.revision);
+        if (body.revision !== revision) return HttpResponse.json({ revision }, { status: 409 });
+        return HttpResponse.json({ ok: true, revision: ++revision });
+      }),
+    );
+    const { result } = renderHook(() => useProjectData('back-wall'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).not.toHaveProperty('revision');
+    for (const name of ['first', 'second', 'third']) {
+      await act(() => result.current.save(buildData({ name })));
+    }
+    expect(revisions).toEqual([7, 8, 9]);
+    expect(result.current.data?.name).toBe('third');
+    expect(result.current.saveError).toBeNull();
+    expect(gets).toBe(1);
+  });
+
+  it('serializes POSTs and coalesces queued edits into the latest snapshot', async () => {
+    const first = deferred();
+    const second = deferred();
+    const posts: { name: string; revision: number }[] = [];
+    let active = 0;
+    let maximum = 0;
+    server.use(
+      http.get('*/api/data', () => HttpResponse.json({ ...buildData(), revision: 7 })),
+      http.post('*/api/data', async ({ request }) => {
+        active++;
+        maximum = Math.max(maximum, active);
+        const body = await request.json() as { name: string; revision: number };
+        posts.push(body);
+        await (posts.length === 1 ? first.promise : second.promise);
+        active--;
+        return HttpResponse.json({ ok: true, revision: body.revision + 1 });
+      }),
+    );
+    const { result } = renderHook(() => useProjectData('back-wall'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let saves!: Promise<void>[];
+    act(() => { saves = [result.current.save(buildData({ name: 'first' }))]; });
+    await waitFor(() => expect(posts).toHaveLength(1));
+    act(() => {
+      saves.push(result.current.save(buildData({ name: 'middle' })));
+      saves.push(result.current.save(buildData({ name: 'latest' })));
+    });
+    expect(posts).toHaveLength(1);
+    expect(result.current.data?.name).toBe('latest');
+    first.resolve();
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(result.current.saving).toBe(true);
+    expect(result.current.data?.name).toBe('latest');
+    expect(posts.map(({ name, revision }) => ({ name, revision }))).toEqual([
+      { name: 'first', revision: 7 }, { name: 'latest', revision: 8 },
+    ]);
+    second.resolve();
+    await act(() => Promise.all(saves));
+    expect(maximum).toBe(1);
+    expect(result.current.saving).toBe(false);
+  });
+
+  it.each([409, 428])('HTTP %s preserves latest edits, rejects queued saves and blocks further saves until reload', async (status) => {
+    const gate = deferred();
+    let posts = 0;
+    server.use(
+      http.get('*/api/data', () => HttpResponse.json({ ...buildData(), revision: 9 })),
+      http.post('*/api/data', async () => {
+        posts++;
+        await gate.promise;
+        return HttpResponse.json({ revision: 10 }, { status });
+      }),
+    );
+    const { result } = renderHook(() => useProjectData('back-wall'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let outcomes!: Promise<PromiseSettledResult<void>[]>;
+    act(() => {
+      outcomes = Promise.allSettled([
+        result.current.save(buildData({ name: 'first' })),
+        result.current.save(buildData({ name: 'unsaved latest' })),
+      ]);
+    });
+    await waitFor(() => expect(posts).toBe(1));
+    gate.resolve();
+    await act(async () => {
+      expect((await outcomes).map((r) => r.status)).toEqual(['rejected', 'rejected']);
+    });
+    expect(result.current.data?.name).toBe('unsaved latest');
+    expect(result.current.saveError).toBe('conflict');
+    expect(result.current.saving).toBe(false);
+    await act(async () => {
+      await expect(result.current.save(buildData({ name: 'still local' }))).rejects.toMatchObject({ status });
+    });
+    expect(posts).toBe(1);
+    expect(result.current.data?.name).toBe('still local');
+    await act(() => result.current.refetch());
+    expect(result.current.data?.name).toBe('Back Wall');
+    expect(result.current.saveError).toBeNull();
+    server.use(http.post('*/api/data', async ({ request }) => {
+      expect(await request.json()).toMatchObject({ revision: 9 });
+      return HttpResponse.json({ ok: true, revision: 10 });
+    }));
+    await act(() => result.current.save(buildData({ name: 'reapplied' })));
+    expect(result.current.saveError).toBeNull();
+  });
+
+  it.each([
+    [401, 'unauthorized'], [403, 'forbidden'], [500, 'failed'], [0, 'failed'],
+  ] as const)('surfaces %s without losing edits or reporting success', async (status, kind) => {
+    server.use(http.post('*/api/data', () => status ? new HttpResponse(null, { status }) : HttpResponse.error()));
+    const { result } = renderHook(() => useProjectData('back-wall'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await expect(result.current.save(buildData({ name: 'unsaved' }))).rejects.toThrow();
+    });
+    expect(result.current.data?.name).toBe('unsaved');
+    expect(result.current.saveError).toBe(kind);
+    expect(result.current.saving).toBe(false);
+  });
+
+  it('keeps project sessions separate when a previous save finishes after navigation', async () => {
+    const gate = deferred();
+    server.use(http.post('*/api/data', async () => {
+      await gate.promise;
+      return HttpResponse.json({ ok: true, revision: 8 });
+    }));
+    const { result, rerender } = renderHook(({ slug }) => useProjectData(slug), { initialProps: { slug: 'back-wall' } });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let save!: Promise<void>;
+    act(() => { save = result.current.save(buildData({ name: 'first project' })); });
+    rerender({ slug: 'kitchen' });
+    await waitFor(() => expect(result.current.data?.slug).toBe('kitchen'));
+    gate.resolve();
+    await act(() => save);
+    expect(result.current.data?.slug).toBe('kitchen');
+    rerender({ slug: 'back-wall' });
+    expect(result.current.data?.name).toBe('first project');
+  });
+});
+
+
+it('loads only once under StrictMode so a late GET cannot replace edits', async () => {
+  let gets = 0;
+  server.use(http.get('*/api/data', () => {
+    gets++;
+    return HttpResponse.json({ ...buildData(), revision: 7 });
+  }));
+  const { result } = renderHook(() => useProjectData('back-wall'), { wrapper: StrictMode });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(gets).toBe(1);
 });

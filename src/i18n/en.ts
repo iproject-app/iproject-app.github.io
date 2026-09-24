@@ -1,6 +1,15 @@
 import type { Translations } from './types';
 
 export const en: Translations = {
+  'home.userId': 'Your user ID: {id}',
+  'save.conflict': 'This project changed on the server. Your edits are still here, but saving is paused. Reload the latest version to continue.',
+  'save.unauthorized': 'Your edits were not saved. Please log in again.',
+  'save.forbidden': 'You don\'t have access to this project. Your edits were not saved.',
+  'save.failed': 'Your edits were not saved. Check your connection and try saving again.',
+  'save.reload': 'Reload latest',
+  'save.discardWarning': 'Reload the latest version? Your unsaved edits will be discarded.',
+  'save.login': 'Log in again',
+  'save.loginWarning': 'Logging in will leave this page. Copy your unsaved edits before continuing.',
   'nav.logout': 'Log out',
   'nav.languageLabel': 'Switch language',
 
@@ -8,7 +17,7 @@ export const en: Translations = {
   'home.projects': 'Projects',
   'home.loadingProjects': 'Loading projects…',
   'home.errorLoadingProjects': "Couldn't load projects.",
-  'home.noProjects': 'No projects yet.',
+  'home.noProjects': 'No projects shared with you yet',
   'home.expenses': 'Expenses',
   'home.total': 'Total',
   'home.newProject': '+ New project',
