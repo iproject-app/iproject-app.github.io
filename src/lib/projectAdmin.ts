@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useApi } from './api';
 
 export interface CreatedProject {
+  revision?: number;
   slug: string;
   name: string;
 }

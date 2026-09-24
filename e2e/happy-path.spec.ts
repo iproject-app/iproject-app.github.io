@@ -278,11 +278,12 @@ test('detail modal shows attached receipt image', async ({ page }) => {
   await expect(img).toHaveAttribute('src', /^blob:/);
 });
 
-for (const status of [409, 428, 401, 403, 500, 0]) {
+for (const status of [400, 409, 428, 401, 403, 500, 0]) {
   test(`save failure ${status} keeps edits visible and offers recovery`, async ({ page }) => {
     let posts = 0;
     let gets = 0;
     let fail = true;
+    await page.route('**/api/projects', (route) => route.fulfill({ json: projectListResponse }));
     const bodies: { expenses: ExpenseLite[]; revision: number }[] = [];
     await page.route('**/api/data*', async (route) => {
       if (route.request().method() === 'POST') {
@@ -307,15 +308,16 @@ for (const status of [409, 428, 401, 403, 500, 0]) {
     await page.getByLabel(/^Amount/).fill('123');
     const submit = page.getByRole('button', { name: 'Add expense', exact: true });
     await submit.click();
-    const message = status === 409 || status === 428 ? /saving is paused/
+    const message = status === 400 ? /data or revision is invalid/
+      : status === 409 || status === 428 ? /saving is paused/
       : status === 401 ? /Please log in again/
       : status === 403 ? /You don't have access to this project/
       : /Check your connection and try saving again/;
-    await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: message }).first()).toBeVisible();
     await expect(page.getByLabel(/^Payee/)).toHaveValue('My unsaved expense');
     await expect(page.getByRole('table').getByText('→ My unsaved expense')).toBeVisible();
     expect(gets).toBe(1);
-    if (status === 409 || status === 428) {
+    if (status === 400 || status === 409 || status === 428) {
       await submit.click();
       expect(posts).toBe(1);
       page.once('dialog', async (dialog) => {
@@ -325,6 +327,17 @@ for (const status of [409, 428, 401, 403, 500, 0]) {
       await page.getByRole('button', { name: 'Reload latest' }).click();
       expect(gets).toBe(1);
       await expect(page.getByLabel(/^Payee/)).toHaveValue('My unsaved expense');
+      await page.getByRole('link', { name: /All projects/ }).click();
+      await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => {
+        const event = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      })).toBe(true);
+      await page.getByRole('link', { name: /Back Wall/ }).click();
+      await expect(page.getByRole('table').getByText('→ My unsaved expense')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Reload latest' })).toBeVisible();
+      expect(gets).toBe(1);
       page.once('dialog', (dialog) => dialog.accept());
       await page.getByRole('button', { name: 'Reload latest' }).click();
       await expect(page.getByRole('table').getByText('→ My unsaved expense')).toHaveCount(0);
@@ -347,5 +360,40 @@ for (const status of [409, 428, 401, 403, 500, 0]) {
       expect(bodies[1].expenses).toHaveLength(2); // retry must not duplicate the local expense
       expect(bodies[1].revision).toBe(7);
     }
+  });
+}
+
+
+for (const versioned of [false, true]) {
+  test(`settings rename → save (${versioned ? 'new' : 'old'} server)`, async ({ page }) => {
+    let revision = 7;
+    let name = 'Back Wall';
+    let saves = 0;
+    await page.route('**/api/data*', async (route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON();
+        expect(body.revision).toBe(versioned ? revision : undefined);
+        expect(body.name).toBe('Renamed project');
+        saves++;
+        await route.fulfill({ json: { ok: true, ...(versioned ? { revision: ++revision } : {}) } });
+        return;
+      }
+      await route.fulfill({ json: {
+        slug: 'back-wall', name, currency: 'BRL', expenses: [initialExpense],
+        contacts: [], customCategories: [], ...(versioned ? { revision } : {}),
+      } });
+    });
+    await page.route('**/api/projects/back-wall/rename', async (route) => {
+      name = route.request().postDataJSON().name;
+      await route.fulfill({ json: { slug: 'back-wall', name, ...(versioned ? { revision: ++revision } : {}) } });
+    });
+    await page.goto('/projects/back-wall');
+    await page.getByRole('button', { name: 'Project settings' }).click();
+    await page.getByRole('dialog').getByLabel('Project name', { exact: true }).fill('Renamed project');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Renamed project' })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(saves).toBe(1);
   });
 }

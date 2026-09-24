@@ -9,6 +9,7 @@ export const SUPPORTED_LANGUAGES: readonly Language[] = ['en', 'pt'];
  */
 export interface Translations {
   'home.userId': string;
+  'save.invalid': string;
   'save.conflict': string;
   'save.unauthorized': string;
   'save.forbidden': string;

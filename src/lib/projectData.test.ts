@@ -2,20 +2,31 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
 } from 'vitest';
-import { StrictMode } from 'react';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { ProjectDataProvider } from './ProjectDataProvider';
+import { StrictMode, createElement, type ReactNode } from 'react';
+import { act, renderHook as renderHookBase, waitFor } from '@testing-library/react';
 import { http, HttpResponse, makeServer } from '../test/msw';
 import { useProjectData } from './projectData';
 import type { ProjectData } from './types';
 
+const renderHook: typeof renderHookBase = (callback, options) => renderHookBase(callback, {
+  wrapper: ProjectDataProvider, ...options,
+});
+const StrictProvider = ({ children }: { children: ReactNode }) =>
+  createElement(StrictMode, null, createElement(ProjectDataProvider, null, children));
+
+const authSubject = vi.hoisted(() => ({ sub: 'owner' }));
+
 vi.mock('@auth0/auth0-react', () => {
   const ctx = {
     isAuthenticated: true,
+    user: authSubject,
     getAccessTokenSilently: async () => 'fake-token',
   };
   return { useAuth0: () => ctx };
@@ -23,6 +34,7 @@ vi.mock('@auth0/auth0-react', () => {
 
 const server = makeServer();
 
+beforeEach(() => { authSubject.sub = 'owner'; });
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
@@ -193,6 +205,7 @@ describe('revision-aware saves', () => {
     });
     expect(posts).toHaveLength(1);
     expect(result.current.data?.name).toBe('latest');
+    expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(false);
     first.resolve();
     await waitFor(() => expect(posts).toHaveLength(2));
     expect(result.current.saving).toBe(true);
@@ -204,6 +217,7 @@ describe('revision-aware saves', () => {
     await act(() => Promise.all(saves));
     expect(maximum).toBe(1);
     expect(result.current.saving).toBe(false);
+    expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true);
   });
 
   it.each([409, 428])('HTTP %s preserves latest edits, rejects queued saves and blocks further saves until reload', async (status) => {
@@ -261,6 +275,7 @@ describe('revision-aware saves', () => {
     });
     expect(result.current.data?.name).toBe('unsaved');
     expect(result.current.saveError).toBe(kind);
+    expect(result.current.unsaved).toBe(true);
     expect(result.current.saving).toBe(false);
   });
 
@@ -291,7 +306,27 @@ it('loads only once under StrictMode so a late GET cannot replace edits', async 
     gets++;
     return HttpResponse.json({ ...buildData(), revision: 7 });
   }));
-  const { result } = renderHook(() => useProjectData('back-wall'), { wrapper: StrictMode });
+  const { result } = renderHook(() => useProjectData('back-wall'), { wrapper: StrictProvider });
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(gets).toBe(1);
+});
+
+
+it('isolates cached edits and unload protection when the API identity changes', async () => {
+  server.use(
+    http.get('*/api/data', () => HttpResponse.json({ ...buildData(), name: authSubject.sub, revision: 7 })),
+    http.post('*/api/data', () => HttpResponse.json({ revision: 8 }, { status: 409 })),
+  );
+  const { result, rerender } = renderHook(() => useProjectData('back-wall'));
+  await waitFor(() => expect(result.current.data?.name).toBe('owner'));
+  await act(async () => {
+    await expect(result.current.save(buildData({ name: 'private edits' }))).rejects.toThrow();
+  });
+  expect(result.current.unsaved).toBe(true);
+  authSubject.sub = 'different-user';
+  rerender();
+  await waitFor(() => expect(result.current.data?.name).toBe('different-user'));
+  expect(result.current.saveError).toBeNull();
+  expect(result.current.unsaved).toBe(false);
+  expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true);
 });

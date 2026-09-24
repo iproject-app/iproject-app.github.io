@@ -1,6 +1,14 @@
+/// <reference types="vitest/jsdom" />
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+
+// Node 26 exposes its own localStorage getter, which Vitest can retain instead
+// of jsdom's Storage. Use this test window's real storage on every Node version.
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: jsdom.window.localStorage,
+});
 
 // React Testing Library auto-cleans between Vitest tests in v15+, but the
 // explicit hook is cheap insurance and makes the lifecycle obvious.

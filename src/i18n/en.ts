@@ -2,6 +2,7 @@ import type { Translations } from './types';
 
 export const en: Translations = {
   'home.userId': 'Your user ID: {id}',
+  'save.invalid': 'The server rejected these edits because the data or revision is invalid. Your edits are still here. Reload the latest version before trying again.',
   'save.conflict': 'This project changed on the server. Your edits are still here, but saving is paused. Reload the latest version to continue.',
   'save.unauthorized': 'Your edits were not saved. Please log in again.',
   'save.forbidden': 'You don\'t have access to this project. Your edits were not saved.',

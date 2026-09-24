@@ -178,7 +178,7 @@ describe('AddExpenseForm', () => {
     await fillRequired(user, { date: '2026-05-10', payee: 'Pedro', amount: '50' });
     await user.click(screen.getByRole('button', { name: 'Add expense' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Check your connection/);
   });
 
   describe('receipt upload + auto-fill', () => {

@@ -1,3 +1,4 @@
+import { saveErrorKind } from '../lib/saveErrors';
 import { useEffect, useRef, useState } from 'react';
 import type { ProjectData } from '../lib/types';
 import { useTranslation, type TranslationKey } from '../i18n';
@@ -103,7 +104,7 @@ export function SettingsModal({
       await onSave(next);
       onClose();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('errors.saveFailed');
+      const msg = t(`save.${saveErrorKind(e)}`);
       setError(msg);
     }
   };

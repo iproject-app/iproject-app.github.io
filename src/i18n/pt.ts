@@ -2,6 +2,7 @@ import type { Translations } from './types';
 
 export const pt: Translations = {
   'home.userId': 'Seu ID de usuário: {id}',
+  'save.invalid': 'O servidor rejeitou estas alterações porque os dados ou a revisão são inválidos. Suas alterações continuam aqui. Recarregue a versão mais recente antes de tentar novamente.',
   'save.conflict': 'Este projeto mudou no servidor. Suas alterações continuam aqui, mas o salvamento está pausado. Recarregue a versão mais recente para continuar.',
   'save.unauthorized': 'Suas alterações não foram salvas. Entre novamente.',
   'save.forbidden': 'Você não tem acesso a este projeto. Suas alterações não foram salvas.',
