@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
-import { ApiError, useApi } from './api';
+import { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
+import type { useApi } from './api';
+import { requiresReload, saveErrorKind, type SaveError } from './saveErrors';
 import type { ProjectData } from './types';
-
-export type SaveError = 'conflict' | 'unauthorized' | 'forbidden' | 'failed';
 
 interface State {
   data: ProjectData | null;
@@ -10,21 +9,7 @@ interface State {
   error: string | null;
   saving: boolean;
   saveError: SaveError | null;
-}
-
-function saveErrorKind(error: unknown): SaveError {
-  if (error instanceof ApiError) {
-    if (error.status === 409 || error.status === 428) return 'conflict';
-    if (error.status === 401) return 'unauthorized';
-    if (error.status === 403) return 'forbidden';
-  }
-  if (
-    typeof error === 'object' && error !== null && 'error' in error &&
-    (error.error === 'login_required' || error.error === 'consent_required')
-  ) {
-    return 'unauthorized';
-  }
-  return 'failed';
+  unsaved: boolean;
 }
 
 /** Each project owns its revision and one drain promise. Callers arriving while
@@ -37,6 +22,7 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
     error: null,
     saving: false,
     saveError: null,
+    unsaved: false,
   };
   let revision: number | undefined;
   let pending: ProjectData | null = null;
@@ -49,6 +35,22 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
   const update = (patch: Partial<State>) => {
     state = { ...state, ...patch };
     listeners.forEach((listener) => listener());
+  };
+  const setRevision = (nextRevision: number | undefined) => {
+    if (nextRevision !== undefined) {
+      // A delayed POST may arrive after a checked rename has advanced us.
+      revision = revision === undefined ? nextRevision : Math.max(revision, nextRevision);
+    }
+  };
+  const assertWritable = () => {
+    if (blocked) throw blocked;
+    if (!slug || !loaded || state.loading) throw new Error('No project loaded.');
+  };
+  const recordFailure = (error: unknown, next?: ProjectData) => {
+    pending = null;
+    const kind = saveErrorKind(error);
+    if (requiresReload(kind)) blocked = error;
+    update({ data: next ?? state.data, saveError: kind, unsaved: true });
   };
   const path = `/api/data?project=${encodeURIComponent(slug ?? '')}`;
 
@@ -66,7 +68,7 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
       revision = nextRevision;
       blocked = null;
       loaded = true;
-      update({ data, loading: false, error: null, saveError: null });
+      update({ data, loading: false, error: null, saveError: null, unsaved: false });
     } catch (error) {
       if (id !== loadId) return;
       update({
@@ -86,13 +88,12 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
           method: 'POST',
           body: { ...next, ...(revision === undefined ? {} : { revision }) },
         });
-        revision = response?.revision;
+        setRevision(response?.revision);
+        if (blocked) throw blocked;
       }
+      update({ unsaved: false });
     } catch (error) {
-      pending = null;
-      const kind = saveErrorKind(error);
-      if (kind === 'conflict') blocked = error;
-      update({ saveError: kind });
+      recordFailure(error);
       throw error;
     } finally {
       running = null;
@@ -108,6 +109,7 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
       };
     },
     getSnapshot: () => state,
+    isObserved: () => listeners.size > 0,
     load: () => {
       if (!started) {
         started = true;
@@ -115,11 +117,15 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
       }
     },
     refetch,
+    getRevision: () => revision,
+    setRevision,
+    assertWritable,
+    recordFailure,
     save: async (next: ProjectData) => {
       if (!slug || !loaded || state.loading) throw new Error('No project loaded.');
       // Keep even rejected edits available on screen; only explicit reload
       // replaces them with server data. A conflict revision is never adopted.
-      update({ data: next });
+      update({ data: next, unsaved: true });
       if (blocked) throw blocked;
       pending = next;
       running ??= drain();
@@ -128,23 +134,43 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
   };
 }
 
+/** Owned by the app provider, not ProjectView, so navigation retains drafts. */
+export function createProjectSessions(api: ReturnType<typeof useApi>) {
+  const sessions = new Map<string | undefined, ReturnType<typeof projectSession>>();
+  return {
+    get: (slug: string | undefined) => {
+      let session = sessions.get(slug);
+      // Keep active, loading, or dirty sessions. A clean unmounted project must
+      // fetch again: another tab may have changed it while this route was away.
+      if (!session || (
+        !session.isObserved() &&
+        !session.getSnapshot().loading &&
+        !session.getSnapshot().unsaved
+      )) {
+        session = projectSession(api, slug);
+        sessions.set(slug, session);
+      }
+      return session;
+    },
+    evict: (slug: string | undefined) => { sessions.delete(slug); },
+    hasUnsavedEdits: () => [...sessions.values()].some((session) => session.getSnapshot().unsaved),
+  };
+}
+
+export const ProjectDataContext = createContext<ReturnType<typeof createProjectSessions> | null>(null);
+
 export function useProjectData(slug: string | undefined) {
-  const api = useApi();
-  const sessions = useMemo(
-    () => new Map<string | undefined, ReturnType<typeof projectSession>>(),
-    [api],
-  );
-  const session = useMemo(() => {
-    let selected = sessions.get(slug);
-    if (!selected) {
-      selected = projectSession(api, slug);
-      sessions.set(slug, selected);
-    }
-    return selected;
-  }, [api, sessions, slug]);
+  const sessions = useContext(ProjectDataContext);
+  if (!sessions) throw new Error('useProjectData requires ProjectDataProvider');
+  const session = useMemo(() => sessions.get(slug), [sessions, slug]);
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   useEffect(() => {
     session.load();
   }, [session]);
-  return { ...state, save: session.save, refetch: session.refetch };
+  return {
+    ...state, save: session.save, refetch: session.refetch,
+    getRevision: session.getRevision, setRevision: session.setRevision,
+    assertWritable: session.assertWritable, recordFailure: session.recordFailure,
+    evict: () => sessions.evict(slug),
+  };
 }

@@ -1,3 +1,4 @@
+import { ApiError } from '../lib/api';
 import { describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -88,7 +89,7 @@ describe('SettingsModal', () => {
     await user.type(screen.getByLabelText(/project name/i), 'Back Wall v2');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    expect(onRename).toHaveBeenCalledWith('Back Wall v2');
+    expect(onRename).toHaveBeenCalledWith('Back Wall v2', expect.objectContaining({ name: 'Back Wall v2' }));
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave.mock.calls[0][0].name).toBe('Back Wall v2');
     // onRename must have completed before onSave fired.
@@ -123,7 +124,7 @@ describe('SettingsModal', () => {
     const user = userEvent.setup();
     const onRename = vi
       .fn()
-      .mockRejectedValue(new Error('Request failed: 409'));
+      .mockRejectedValue(new ApiError('Request failed: 409', 409, null));
     const onSave = vi.fn();
     renderWithI18n(
       <SettingsModal
@@ -140,7 +141,7 @@ describe('SettingsModal', () => {
     await user.type(screen.getByLabelText(/project name/i), 'Something Else');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/409/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/saving is paused/);
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -295,7 +296,7 @@ describe('SettingsModal', () => {
 
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Check your connection/);
   });
 
   it('hides the delete-project section when no onDelete is provided', () => {

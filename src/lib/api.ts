@@ -56,12 +56,13 @@ function safeJson(text: string): unknown {
  * using the current Auth0 access token. The token is fetched lazily per call.
  */
 export function useApi() {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
+  // Session caches must not cross an Auth0 subject change.
   return useCallback(
     async <T,>(path: string, options?: ApiRequestOptions): Promise<T> => {
       const token = isAuthenticated ? await getAccessTokenSilently() : null;
       return apiRequest<T>(path, token, options);
     },
-    [getAccessTokenSilently, isAuthenticated],
+    [getAccessTokenSilently, isAuthenticated, user?.sub],
   );
 }

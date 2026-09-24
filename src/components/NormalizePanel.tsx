@@ -1,3 +1,4 @@
+import { saveErrorKind } from '../lib/saveErrors';
 import { useState } from 'react';
 import type { Contact, ProjectData } from '../lib/types';
 import {
@@ -42,7 +43,7 @@ export function NormalizePanel({ data, liveContacts, saving, onApply }: Props) {
       });
       setConfirming(false);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('errors.saveFailed');
+      const msg = t(`save.${saveErrorKind(e)}`);
       setError(msg);
     }
   };

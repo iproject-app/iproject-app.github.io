@@ -173,6 +173,6 @@ describe('NormalizePanel', () => {
     );
     await user.click(screen.getByRole('button', { name: /yes, normalize/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/500/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Check your connection/);
   });
 });

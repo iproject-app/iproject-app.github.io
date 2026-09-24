@@ -1,6 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { requiresReload, saveErrorKind } from '../lib/saveErrors';
 import { useProjectData } from '../lib/projectData';
 import { useDeleteProject, useRenameProject } from '../lib/projectAdmin';
 import { totalOutstanding } from '../lib/bills';
@@ -18,7 +19,7 @@ import {
 import { OutstandingPill } from '../components/OutstandingPill';
 import { SettingsModal } from '../components/SettingsModal';
 import { SummaryTiles } from '../components/SummaryTiles';
-import type { Expense } from '../lib/types';
+import type { Expense, ProjectData } from '../lib/types';
 
 /** Distinct payers and categories present on a project's expenses, for the
  *  filter dropdowns. Sorted to keep the UI stable across re-renders. */
@@ -45,12 +46,27 @@ export function ProjectView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { loginWithRedirect } = useAuth0();
-  const { data, loading, error, saving, saveError, save, refetch } = useProjectData(slug);
+  const {
+    data, loading, error, saving, saveError, save, refetch,
+    getRevision, setRevision, assertWritable, recordFailure, evict,
+  } = useProjectData(slug);
   const renameProject = useRenameProject();
   const deleteProject = useDeleteProject();
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filters, setFilters] = useState<ExpenseFilters>(initialFilters);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const saveWithFeedback = async (next: ProjectData) => {
+    try {
+      await save(next);
+    } catch (error) {
+      if (requiresReload(saveErrorKind(error))) {
+        setEditing(null);
+        setSettingsOpen(false);
+      }
+      throw error;
+    }
+  };
 
   const entriesLabel = data
     ? t(
@@ -123,7 +139,7 @@ export function ProjectView() {
 
       {!loading && data && (
         <section className="mt-6">
-          <AddExpenseForm data={data} saving={saving} onAdd={save} />
+          <AddExpenseForm data={data} saving={saving} onAdd={saveWithFeedback} />
         </section>
       )}
 
@@ -131,7 +147,7 @@ export function ProjectView() {
         <section className="mt-6">
           <Banner variant="error">
             <p>{t(`save.${saveError}`)}</p>
-            {saveError === 'conflict' && (
+            {requiresReload(saveError) && (
               <button type="button" className="mt-3 font-medium underline" onClick={() => {
                 if (window.confirm(t('save.discardWarning'))) {
                   setEditing(null);
@@ -181,7 +197,7 @@ export function ProjectView() {
           expense={editing}
           data={data}
           saving={saving}
-          onSave={save}
+          onSave={saveWithFeedback}
           onClose={() => setEditing(null)}
         />
       )}
@@ -191,14 +207,25 @@ export function ProjectView() {
           open={settingsOpen}
           data={data}
           saving={saving}
-          onSave={save}
-          onRename={async (name) => {
+          onSave={saveWithFeedback}
+          onRename={async (name, next) => {
             if (!data) return;
-            await renameProject(data.slug, name);
+            try {
+              assertWritable();
+              const expectedRevision = getRevision();
+              const renamed = await renameProject(data.slug, name, expectedRevision);
+              // An unversioned rename cannot authorize a stale full-body save.
+              if (expectedRevision !== undefined) setRevision(renamed.revision);
+            } catch (error) {
+              recordFailure(error, next);
+              if (requiresReload(saveErrorKind(error))) setSettingsOpen(false);
+              throw error; // Settings must not continue to its data POST.
+            }
           }}
           onDelete={async () => {
             if (!data) return;
             await deleteProject(data.slug);
+            evict();
             setSettingsOpen(false);
             navigate('/');
           }}
