@@ -89,7 +89,7 @@ describe('SettingsModal', () => {
     await user.type(screen.getByLabelText(/project name/i), 'Back Wall v2');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    expect(onRename).toHaveBeenCalledWith('Back Wall v2');
+    expect(onRename).toHaveBeenCalledWith('Back Wall v2', expect.objectContaining({ name: 'Back Wall v2' }));
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave.mock.calls[0][0].name).toBe('Back Wall v2');
     // onRename must have completed before onSave fired.

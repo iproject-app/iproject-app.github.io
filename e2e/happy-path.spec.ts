@@ -384,6 +384,7 @@ for (const versioned of [false, true]) {
       } });
     });
     await page.route('**/api/projects/back-wall/rename', async (route) => {
+      expect(route.request().headers()['if-match']).toBe(versioned ? `"${revision}"` : undefined);
       name = route.request().postDataJSON().name;
       await route.fulfill({ json: { slug: 'back-wall', name, ...(versioned ? { revision: ++revision } : {}) } });
     });
@@ -397,3 +398,92 @@ for (const versioned of [false, true]) {
     expect(saves).toBe(1);
   });
 }
+
+
+test('B1: two tabs cannot use rename to overwrite a newer save', async ({ page: tabA, context }) => {
+  let stored = {
+    slug: 'back-wall', name: 'Back Wall', currency: 'BRL', expenses: [initialExpense],
+    contacts: [], customCategories: [], revision: 7,
+  };
+  const matches: (string | undefined)[] = [];
+  const saves: number[] = [];
+  await context.route('**/api/data*', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      if (body.revision !== stored.revision) {
+        await route.fulfill({ status: 409, json: { revision: stored.revision } });
+        return;
+      }
+      saves.push(body.revision);
+      stored = { ...body, revision: stored.revision + 1 };
+      await route.fulfill({ json: { ok: true, revision: stored.revision } });
+      return;
+    }
+    await route.fulfill({ json: stored });
+  });
+  await context.route('**/api/projects/back-wall/rename', async (route) => {
+    const match = route.request().headers()['if-match'];
+    matches.push(match);
+    if (!match || match !== `"${stored.revision}"`) {
+      await route.fulfill({ status: match ? 409 : 428, json: { revision: stored.revision } });
+      return;
+    }
+    stored = { ...stored, name: route.request().postDataJSON().name, revision: stored.revision + 1 };
+    await route.fulfill({ json: { name: stored.name, revision: stored.revision } });
+  });
+  await tabA.goto('/projects/back-wall');
+  await tabA.getByRole('button', { name: 'Project settings' }).click();
+  await tabA.getByRole('dialog').getByLabel('Project name', { exact: true }).fill('Tab A rename');
+  const tabB = await context.newPage();
+  await tabB.goto('/projects/back-wall');
+  await tabB.getByRole('button', { name: /expand add expense form/i }).click();
+  await tabB.getByLabel(/^Payee/).fill('Tab B expense');
+  await tabB.getByLabel(/^Amount/).fill('123');
+  await tabB.getByRole('button', { name: 'Add expense', exact: true }).click();
+  await expect.poll(() => stored.revision).toBe(8);
+  await tabA.bringToFront();
+  await tabA.getByRole('button', { name: 'Save changes' }).click();
+  await expect(tabA.getByRole('dialog')).toHaveCount(0);
+  await expect(tabA.getByRole('alert')).toContainText('saving is paused');
+  await expect(tabA.getByRole('button', { name: 'Reload latest' })).toBeVisible();
+  expect(matches).toEqual(['"7"']);
+  expect(saves).toEqual([7]);
+  expect(stored.revision).toBe(8);
+  expect(stored.name).toBe('Back Wall');
+  expect(stored.expenses.some((expense) => expense.payee === 'Tab B expense')).toBe(true);
+  // Explicit reload recovers tab B's data; the next rename and save use 8 then 9.
+  tabA.once('dialog', (dialog) => dialog.accept());
+  await tabA.getByRole('button', { name: 'Reload latest' }).click();
+  await expect(tabA.getByRole('table').getByText('→ Tab B expense')).toBeVisible();
+  await tabA.getByRole('button', { name: 'Project settings' }).click();
+  await tabA.getByRole('dialog').getByLabel('Project name', { exact: true }).fill('Tab A rename');
+  await tabA.getByRole('button', { name: 'Save changes' }).click();
+  await expect(tabA.getByRole('dialog')).toHaveCount(0);
+  await expect(tabA.getByRole('alert')).toHaveCount(0);
+  await expect(tabA.getByRole('heading', { name: 'Tab A rename' })).toBeVisible();
+  expect(matches).toEqual(['"7"', '"8"']);
+  expect(saves).toEqual([7, 9]);
+  expect(stored.revision).toBe(10);
+  expect(stored.expenses.some((expense) => expense.payee === 'Tab B expense')).toBe(true);
+});
+
+test('B2: returning from Home refreshes a clean project', async ({ page }) => {
+  let gets = 0;
+  let description = 'Before navigation';
+  await page.route('**/api/projects', (route) => route.fulfill({ json: projectListResponse }));
+  await page.route('**/api/data*', (route) => {
+    gets++;
+    return route.fulfill({ json: {
+      slug: 'back-wall', name: 'Back Wall', currency: 'BRL',
+      expenses: [{ ...initialExpense, description }], contacts: [], customCategories: [], revision: gets + 6,
+    } });
+  });
+  await page.goto('/projects/back-wall');
+  await expect(page.getByRole('table').getByText('Before navigation')).toBeVisible();
+  await page.getByRole('link', { name: /All projects/ }).click();
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+  description = 'Changed while away';
+  await page.getByRole('link', { name: /Back Wall/ }).click();
+  await expect(page.getByRole('table').getByText('Changed while away')).toBeVisible();
+  expect(gets).toBe(2);
+});

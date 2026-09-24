@@ -46,7 +46,10 @@ export function ProjectView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { loginWithRedirect } = useAuth0();
-  const { data, loading, error, saving, saveError, save, refetch, setRevision } = useProjectData(slug);
+  const {
+    data, loading, error, saving, saveError, save, refetch,
+    getRevision, setRevision, assertWritable, recordFailure, evict,
+  } = useProjectData(slug);
   const renameProject = useRenameProject();
   const deleteProject = useDeleteProject();
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -205,14 +208,24 @@ export function ProjectView() {
           data={data}
           saving={saving}
           onSave={saveWithFeedback}
-          onRename={async (name) => {
+          onRename={async (name, next) => {
             if (!data) return;
-            const renamed = await renameProject(data.slug, name);
-            setRevision(renamed.revision);
+            try {
+              assertWritable();
+              const expectedRevision = getRevision();
+              const renamed = await renameProject(data.slug, name, expectedRevision);
+              // An unversioned rename cannot authorize a stale full-body save.
+              if (expectedRevision !== undefined) setRevision(renamed.revision);
+            } catch (error) {
+              recordFailure(error, next);
+              if (requiresReload(saveErrorKind(error))) setSettingsOpen(false);
+              throw error; // Settings must not continue to its data POST.
+            }
           }}
           onDelete={async () => {
             if (!data) return;
             await deleteProject(data.slug);
+            evict();
             setSettingsOpen(false);
             navigate('/');
           }}

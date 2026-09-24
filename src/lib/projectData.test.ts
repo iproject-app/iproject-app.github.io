@@ -295,7 +295,7 @@ describe('revision-aware saves', () => {
     await act(() => save);
     expect(result.current.data?.slug).toBe('kitchen');
     rerender({ slug: 'back-wall' });
-    expect(result.current.data?.name).toBe('first project');
+    await waitFor(() => expect(result.current.data?.name).toBe('Back Wall')); // clean remount refetches
   });
 });
 
@@ -329,4 +329,36 @@ it('isolates cached edits and unload protection when the API identity changes', 
   expect(result.current.saveError).toBeNull();
   expect(result.current.unsaved).toBe(false);
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true);
+});
+
+
+it.each([8, undefined])('a late data response (%s) cannot overwrite a newer adopted revision', async (responseRevision) => {
+  const gate = deferred();
+  const revisions: unknown[] = [];
+  server.use(
+    http.get('*/api/data', () => HttpResponse.json({ ...buildData(), revision: 7 })),
+    http.post('*/api/data', async ({ request }) => {
+      const body = await request.json() as { revision: number };
+      revisions.push(body.revision);
+      if (revisions.length === 1) {
+        await gate.promise;
+        return HttpResponse.json({ ok: true, revision: responseRevision });
+      }
+      return HttpResponse.json({ ok: true, revision: 10 });
+    }),
+  );
+  const { result } = renderHook(() => useProjectData('back-wall'));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  let first!: Promise<void>;
+  let queued!: Promise<void>;
+  act(() => { first = result.current.save(buildData()); });
+  await waitFor(() => expect(revisions).toEqual([7]));
+  act(() => {
+    result.current.setRevision(9);
+    queued = result.current.save(buildData({ name: 'latest' }));
+  });
+  gate.resolve();
+  await act(() => Promise.all([first, queued]));
+  expect(revisions).toEqual([7, 9]);
+  expect(result.current.getRevision()).toBe(10);
 });

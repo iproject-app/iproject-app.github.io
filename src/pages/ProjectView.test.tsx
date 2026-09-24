@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
+import { apiRequest } from '../lib/api';
 import { ProjectDataProvider } from '../lib/ProjectDataProvider';
 import { http, HttpResponse, makeServer } from '../test/msw';
 import { renderWithProviders } from '../test/helpers';
@@ -53,14 +54,15 @@ async function openSettings(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Settings rename then save', () => {
-  it.each(['new', 'old', 'missing-rename-revision'] as const)('uses the correct revision with the %s server', async (version) => {
-    let revision = version === 'old' ? undefined : 7;
+  it.each(['new', 'old', 'old-with-revision', 'missing-rename-revision'] as const)('uses the correct revision with the %s server', async (version) => {
+    let revision = version.startsWith('old') ? undefined : 7;
     const posted: unknown[] = [];
     server.use(
       http.get('*/api/data', () => HttpResponse.json({ ...data, revision })),
-      http.post('*/api/projects/back-wall/rename', () => {
+      http.post('*/api/projects/back-wall/rename', ({ request }) => {
+        expect(request.headers.get('if-match')).toBe(revision === undefined ? null : `"${revision}"`);
         if (version === 'new') revision = 8;
-        return HttpResponse.json({ slug: data.slug, name: 'Renamed', ...(version === 'new' ? { revision } : {}) });
+        return HttpResponse.json({ slug: data.slug, name: 'Renamed', ...(version === 'new' ? { revision } : version === 'old-with-revision' ? { revision: 9 } : {}) });
       }),
       http.post('*/api/data', async ({ request }) => {
         const body = await request.json() as ProjectData & { revision?: number };
@@ -77,7 +79,7 @@ describe('Settings rename then save', () => {
     await user.click(dialog.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(posted).toEqual([expect.objectContaining({ name: 'Renamed', ...(version === 'old' ? {} : { revision: version === 'new' ? 8 : 7 }) })]);
+    expect(posted).toEqual([expect.objectContaining({ name: 'Renamed', ...(version.startsWith('old') ? {} : { revision: version === 'new' ? 8 : 7 }) })]);
     expect(unloadIsPrevented()).toBe(false);
     // A following settings save uses the revision returned by POST /api/data.
     const again = await openSettings(user);
@@ -150,9 +152,15 @@ describe('save recovery', () => {
   it('warns for pending writes after unmount and clears the guard after success', async () => {
     let resolve!: () => void;
     const gate = new Promise<void>((done) => { resolve = done; });
+    let stored = data;
+    let gets = 0;
     server.use(
-      http.get('*/api/data', () => HttpResponse.json({ ...data, revision: 7 })),
-      http.post('*/api/data', async () => { await gate; return HttpResponse.json({ ok: true, revision: 8 }); }),
+      http.get('*/api/data', () => { gets++; return HttpResponse.json({ ...stored, revision: 7 }); }),
+      http.post('*/api/data', async ({ request }) => {
+        stored = await request.json() as ProjectData;
+        await gate;
+        return HttpResponse.json({ ok: true, revision: 8 });
+      }),
     );
     const user = userEvent.setup();
     renderProject();
@@ -168,5 +176,124 @@ describe('save recovery', () => {
     await waitFor(() => expect(unloadIsPrevented()).toBe(false));
     await user.click(await screen.findByRole('link', { name: /Back Wall/ }));
     expect(await screen.findByText('→ Pending item')).toBeInTheDocument();
+    expect(gets).toBe(2);
+  });
+});
+
+
+describe('review regressions', () => {
+  it('B1: a stale tab cannot rename and then overwrite another tab’s save', async () => {
+    let stored = { ...data, revision: 7 };
+    let renames = 0;
+    const matches: (string | null)[] = [];
+    let saves = 0;
+    server.use(
+      http.get('*/api/data', () => HttpResponse.json(stored)),
+      http.post('*/api/data', async ({ request }) => {
+        const body = await request.json() as typeof stored;
+        if (body.revision !== stored.revision) return HttpResponse.json({ revision: stored.revision }, { status: 409 });
+        saves++;
+        stored = { ...body, revision: stored.revision + 1 };
+        return HttpResponse.json({ ok: true, revision: stored.revision });
+      }),
+      http.post('*/api/projects/back-wall/rename', async ({ request }) => {
+        renames++;
+        const match = request.headers.get('if-match');
+        matches.push(match);
+        if (!match) return HttpResponse.json({ revision: stored.revision }, { status: 428 });
+        if (match !== `"${stored.revision}"`) return HttpResponse.json({ revision: stored.revision }, { status: 409 });
+        const body = await request.json() as { name: string };
+        stored = { ...stored, name: body.name, revision: stored.revision + 1 };
+        return HttpResponse.json({ name: stored.name, revision: stored.revision });
+      }),
+    );
+    const user = userEvent.setup();
+    renderProject(); // tab A loads revision 7
+    const dialog = await openSettings(user);
+    await user.clear(dialog.getByLabelText('Project name'));
+    await user.type(dialog.getByLabelText('Project name'), 'Tab A draft');
+    // Independent client/tab B saves revision 7 and advances the server to 8.
+    await apiRequest('/api/data?project=back-wall', 'tab-b-token', {
+      method: 'POST', body: { ...data, revision: 7, expenses: [{ ...data.expenses[0], description: 'Tab B edit' }] },
+    });
+    await user.click(dialog.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('button', { name: 'Reload latest' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/saving is paused/);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tab A draft' })).toBeInTheDocument();
+    expect(unloadIsPrevented()).toBe(true);
+    expect(stored.revision).toBe(8);
+    expect(stored.name).toBe('Back Wall');
+    expect(stored.expenses[0].description).toBe('Tab B edit');
+    expect(saves).toBe(1); // only tab B wrote data
+    expect(renames).toBe(1);
+    expect(matches).toEqual(['"7"']);
+    // The blocked session must not issue another rename, either.
+    const again = await openSettings(user);
+    await user.type(again.getByLabelText('Project name'), ' retry');
+    await user.click(again.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(renames).toBe(1);
+    expect(saves).toBe(1);
+  });
+
+  it.each([400, 409, 428])('rename HTTP %s blocks without a follow-up data POST', async (status) => {
+    let saves = 0;
+    server.use(
+      http.get('*/api/data', () => HttpResponse.json({ ...data, revision: 7 })),
+      http.post('*/api/projects/back-wall/rename', () => HttpResponse.json({ revision: 99 }, { status })),
+      http.post('*/api/data', () => { saves++; return HttpResponse.json({ ok: true, revision: 100 }); }),
+    );
+    const user = userEvent.setup();
+    renderProject();
+    const dialog = await openSettings(user);
+    await user.type(dialog.getByLabelText('Project name'), ' draft');
+    await user.click(dialog.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('button', { name: 'Reload latest' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(saves).toBe(0);
+    expect(unloadIsPrevented()).toBe(true);
+  });
+
+  it('B2: a clean project refetches after Home navigation', async () => {
+    let gets = 0;
+    let stored = { ...data, revision: 7 };
+    server.use(http.get('*/api/data', () => { gets++; return HttpResponse.json(stored); }));
+    const user = userEvent.setup();
+    renderProject();
+    await within(await screen.findByRole('table')).findByText('Original');
+    await user.click(screen.getByRole('link', { name: /All projects/ }));
+    await screen.findByRole('heading', { name: 'Projects' });
+    stored = { ...data, revision: 8, expenses: [{ ...data.expenses[0], description: 'Changed while away' }] };
+    await user.click(await screen.findByRole('link', { name: /Back Wall/ }));
+    expect(await within(await screen.findByRole('table')).findByText('Changed while away')).toBeInTheDocument();
+    expect(screen.queryByText('Original')).not.toBeInTheDocument();
+    expect(gets).toBe(2);
+    expect(unloadIsPrevented()).toBe(false);
+  });
+
+  it('deleting a dirty project evicts its session and disarms the unload guard', async () => {
+    let gets = 0;
+    server.use(
+      http.get('*/api/data', () => { gets++; return HttpResponse.json({ ...data, revision: gets === 1 ? 7 : 1 }); }),
+      http.post('*/api/data', () => HttpResponse.json({ revision: 8 }, { status: 409 })),
+      http.post('*/api/projects/back-wall/delete', () => HttpResponse.json({ slug: 'back-wall', trashed: 'back-wall-trash' })),
+    );
+    const user = userEvent.setup();
+    renderProject();
+    const dialog = await openSettings(user);
+    await user.click(dialog.getByRole('button', { name: 'Save changes' }));
+    await screen.findByRole('button', { name: 'Reload latest' });
+    expect(unloadIsPrevented()).toBe(true);
+    const settings = await openSettings(user);
+    await user.click(settings.getByRole('button', { name: 'Delete project' }));
+    await user.click(settings.getByRole('button', { name: /Yes, delete/ }));
+    await screen.findByRole('heading', { name: 'Projects' });
+    expect(unloadIsPrevented()).toBe(false);
+    // Simulate a new project with the same slug; no cached conflict or revision.
+    await user.click(await screen.findByRole('link', { name: /Back Wall/ }));
+    await within(await screen.findByRole('table')).findByText('Original');
+    expect(gets).toBe(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

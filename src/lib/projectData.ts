@@ -36,6 +36,22 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
     state = { ...state, ...patch };
     listeners.forEach((listener) => listener());
   };
+  const setRevision = (nextRevision: number | undefined) => {
+    if (nextRevision !== undefined) {
+      // A delayed POST may arrive after a checked rename has advanced us.
+      revision = revision === undefined ? nextRevision : Math.max(revision, nextRevision);
+    }
+  };
+  const assertWritable = () => {
+    if (blocked) throw blocked;
+    if (!slug || !loaded || state.loading) throw new Error('No project loaded.');
+  };
+  const recordFailure = (error: unknown, next?: ProjectData) => {
+    pending = null;
+    const kind = saveErrorKind(error);
+    if (requiresReload(kind)) blocked = error;
+    update({ data: next ?? state.data, saveError: kind, unsaved: true });
+  };
   const path = `/api/data?project=${encodeURIComponent(slug ?? '')}`;
 
   const refetch = async () => {
@@ -72,14 +88,12 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
           method: 'POST',
           body: { ...next, ...(revision === undefined ? {} : { revision }) },
         });
-        revision = response?.revision;
+        setRevision(response?.revision);
+        if (blocked) throw blocked;
       }
       update({ unsaved: false });
     } catch (error) {
-      pending = null;
-      const kind = saveErrorKind(error);
-      if (requiresReload(kind)) blocked = error;
-      update({ saveError: kind });
+      recordFailure(error);
       throw error;
     } finally {
       running = null;
@@ -95,6 +109,7 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
       };
     },
     getSnapshot: () => state,
+    isObserved: () => listeners.size > 0,
     load: () => {
       if (!started) {
         started = true;
@@ -102,10 +117,10 @@ function projectSession(api: ReturnType<typeof useApi>, slug: string | undefined
       }
     },
     refetch,
-    setRevision: (nextRevision: number | undefined) => {
-      // Old rename responses omit revision. Never erase a known revision.
-      if (nextRevision !== undefined) revision = nextRevision;
-    },
+    getRevision: () => revision,
+    setRevision,
+    assertWritable,
+    recordFailure,
     save: async (next: ProjectData) => {
       if (!slug || !loaded || state.loading) throw new Error('No project loaded.');
       // Keep even rejected edits available on screen; only explicit reload
@@ -125,12 +140,19 @@ export function createProjectSessions(api: ReturnType<typeof useApi>) {
   return {
     get: (slug: string | undefined) => {
       let session = sessions.get(slug);
-      if (!session) {
+      // Keep active, loading, or dirty sessions. A clean unmounted project must
+      // fetch again: another tab may have changed it while this route was away.
+      if (!session || (
+        !session.isObserved() &&
+        !session.getSnapshot().loading &&
+        !session.getSnapshot().unsaved
+      )) {
         session = projectSession(api, slug);
         sessions.set(slug, session);
       }
       return session;
     },
+    evict: (slug: string | undefined) => { sessions.delete(slug); },
     hasUnsavedEdits: () => [...sessions.values()].some((session) => session.getSnapshot().unsaved),
   };
 }
@@ -145,5 +167,10 @@ export function useProjectData(slug: string | undefined) {
   useEffect(() => {
     session.load();
   }, [session]);
-  return { ...state, save: session.save, refetch: session.refetch, setRevision: session.setRevision };
+  return {
+    ...state, save: session.save, refetch: session.refetch,
+    getRevision: session.getRevision, setRevision: session.setRevision,
+    assertWritable: session.assertWritable, recordFailure: session.recordFailure,
+    evict: () => sessions.evict(slug),
+  };
 }

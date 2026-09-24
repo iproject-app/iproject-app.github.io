@@ -22,8 +22,8 @@ interface Props {
   saving: boolean;
   onSave: (next: ProjectData) => Promise<void>;
   /** Persist a new project display name. Called only when the name actually
-   *  changes; the parent typically wires this to the rename API. */
-  onRename?: (name: string) => Promise<void>;
+   *  changes. Pass the full draft so a rejected rename can retain all edits. */
+  onRename?: (name: string, next: ProjectData) => Promise<void>;
   /** Soft-delete this project. The parent wires this to the delete API and
    *  is responsible for navigating away once the promise resolves. */
   onDelete?: () => Promise<void>;
@@ -90,9 +90,6 @@ export function SettingsModal({
     try {
       const trimmedName = nameDraft.trim() || data.name;
       const nameChanged = trimmedName !== data.name;
-      if (nameChanged && onRename) {
-        await onRename(trimmedName);
-      }
       const next = applyContractDraft(
         {
           ...data,
@@ -101,6 +98,9 @@ export function SettingsModal({
         },
         contractDraft,
       );
+      if (nameChanged && onRename) {
+        await onRename(trimmedName, next);
+      }
       await onSave(next);
       onClose();
     } catch (e: unknown) {
