@@ -1,3 +1,4 @@
+import { saveErrorKind } from '../lib/saveErrors';
 import { useEffect, useRef, useState } from 'react';
 import type { Expense, ProjectData } from '../lib/types';
 import { categorySuggestions } from '../lib/categories';
@@ -139,7 +140,7 @@ export function ExpenseDetailModal({
       await onSave(next);
       onClose();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : t('errors.saveFailed');
+      const message = t(`save.${saveErrorKind(e)}`);
       setError({ kind: 'raw', message });
     }
   };
@@ -158,7 +159,7 @@ export function ExpenseDetailModal({
       await onSave(next);
       onClose();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : t('errors.saveFailed');
+      const message = t(`save.${saveErrorKind(e)}`);
       setError({ kind: 'raw', message });
       setConfirmingDelete(false);
     }

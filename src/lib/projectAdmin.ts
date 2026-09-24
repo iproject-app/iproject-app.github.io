@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useApi } from './api';
 
 export interface CreatedProject {
+  revision?: number;
   slug: string;
   name: string;
 }
@@ -23,12 +24,13 @@ export function useCreateProject() {
 export function useRenameProject() {
   const api = useApi();
   return useCallback(
-    async (slug: string, name: string): Promise<CreatedProject> =>
+    async (slug: string, name: string, revision?: number): Promise<CreatedProject> =>
       api<CreatedProject>(
         `/api/projects/${encodeURIComponent(slug)}/rename`,
         {
           method: 'POST',
           body: { name },
+          ...(revision === undefined ? {} : { headers: { 'If-Match': `"${revision}"` } }),
         },
       ),
     [api],

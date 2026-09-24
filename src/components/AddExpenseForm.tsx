@@ -1,3 +1,4 @@
+import { saveErrorKind } from '../lib/saveErrors';
 import { useRef, useState } from 'react';
 import type { Expense, ProjectData } from '../lib/types';
 import { todayISO } from '../lib/format';
@@ -149,7 +150,7 @@ export function AddExpenseForm({ data, saving, onAdd }: Props) {
       setExtras({});
       setReceiptState({ kind: 'idle' });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : t('errors.saveFailed');
+      const message = t(`save.${saveErrorKind(e)}`);
       setError({ kind: 'raw', message });
     }
   };
