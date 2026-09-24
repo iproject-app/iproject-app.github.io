@@ -101,6 +101,7 @@ for (const versioned of [false, true]) {
 
     // Open the form, drop a receipt, verify the AI auto-filled the fields.
     await page.getByRole('button', { name: /expand add expense form/i }).click();
+    await expect(page.getByLabel(/^Date/)).toBeFocused();
     await page
       .locator('input[type="file"]')
       .setInputFiles({
@@ -201,6 +202,7 @@ test('outstanding pill + bill linkage', async ({ page }) => {
 
   // Add a payment that links to the bill.
   await page.getByRole('button', { name: /expand add expense form/i }).click();
+  await expect(page.getByLabel(/^Date/)).toBeFocused();
   await page.getByLabel(/^Date/).fill('2026-05-08');
   await page.getByLabel(/^Payee/).fill('Quarry');
   await page.getByLabel(/^Amount/).fill('300');
@@ -304,6 +306,7 @@ for (const status of [400, 409, 428, 401, 403, 500, 0]) {
     });
     await page.goto('/projects/back-wall');
     await page.getByRole('button', { name: /expand add expense form/i }).click();
+    await expect(page.getByLabel(/^Date/)).toBeFocused();
     await page.getByLabel(/^Payee/).fill('My unsaved expense');
     await page.getByLabel(/^Amount/).fill('123');
     const submit = page.getByRole('button', { name: 'Add expense', exact: true });
@@ -345,6 +348,7 @@ for (const status of [400, 409, 428, 401, 403, 500, 0]) {
       expect(gets).toBe(2);
       fail = false;
       await page.getByRole('button', { name: /expand add expense form/i }).click();
+      await expect(page.getByLabel(/^Date/)).toBeFocused();
       await page.getByLabel(/^Payee/).fill('Reapplied expense');
       await page.getByLabel(/^Amount/).fill('123');
       await submit.click();
@@ -433,10 +437,12 @@ test('B1: two tabs cannot use rename to overwrite a newer save', async ({ page: 
   });
   await tabA.goto('/projects/back-wall');
   await tabA.getByRole('button', { name: 'Project settings' }).click();
+  await expect(tabA.getByRole('dialog').getByLabel('Project name', { exact: true })).toHaveValue('Back Wall');
   await tabA.getByRole('dialog').getByLabel('Project name', { exact: true }).fill('Tab A rename');
   const tabB = await context.newPage();
   await tabB.goto('/projects/back-wall');
   await tabB.getByRole('button', { name: /expand add expense form/i }).click();
+  await expect(tabB.getByLabel(/^Date/)).toBeFocused();
   await tabB.getByLabel(/^Payee/).fill('Tab B expense');
   await tabB.getByLabel(/^Amount/).fill('123');
   await tabB.getByRole('button', { name: 'Add expense', exact: true }).click();
@@ -456,6 +462,7 @@ test('B1: two tabs cannot use rename to overwrite a newer save', async ({ page: 
   await tabA.getByRole('button', { name: 'Reload latest' }).click();
   await expect(tabA.getByRole('table').getByText('→ Tab B expense')).toBeVisible();
   await tabA.getByRole('button', { name: 'Project settings' }).click();
+  await expect(tabA.getByRole('dialog').getByLabel('Project name', { exact: true })).toHaveValue('Back Wall');
   await tabA.getByRole('dialog').getByLabel('Project name', { exact: true }).fill('Tab A rename');
   await tabA.getByRole('button', { name: 'Save changes' }).click();
   await expect(tabA.getByRole('dialog')).toHaveCount(0);
